@@ -46,6 +46,40 @@ static void enter_error(desk_controller_t *controller, desk_error_t error)
     command_stop(controller);
 }
 
+static bool has_limit_conflict(const desk_inputs_t *inputs)
+{
+    return (inputs->left_upper_limit_active && inputs->left_lower_limit_active) ||
+           (inputs->right_upper_limit_active && inputs->right_lower_limit_active);
+}
+
+static void command_up_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
+{
+    controller->left_motor = inputs->left_upper_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
+    controller->right_motor = inputs->right_upper_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
+
+    if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
+        controller->state = DESK_STATE_IDLE;
+        controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    } else {
+        controller->state = DESK_STATE_MOVING_UP;
+        controller->last_motion_direction = MOTOR_COMMAND_UP;
+    }
+}
+
+static void command_down_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
+{
+    controller->left_motor = inputs->left_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+    controller->right_motor = inputs->right_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+
+    if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
+        controller->state = DESK_STATE_IDLE;
+        controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    } else {
+        controller->state = DESK_STATE_MOVING_DOWN;
+        controller->last_motion_direction = MOTOR_COMMAND_DOWN;
+    }
+}
+
 void desk_controller_init(desk_controller_t *controller, const desk_config_t *config)
 {
     if (controller == NULL) {
@@ -80,26 +114,25 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
         return current_outputs(controller);
     }
 
+    if (has_limit_conflict(inputs)) {
+        enter_error(controller, DESK_ERROR_LIMIT_CONFLICT);
+        return current_outputs(controller);
+    }
+
     if (inputs->up_pressed && inputs->down_pressed) {
         enter_error(controller, DESK_ERROR_BOTH_BUTTONS_PRESSED);
         return current_outputs(controller);
     }
 
     if (inputs->up_pressed) {
-        controller->state = DESK_STATE_MOVING_UP;
         controller->error = DESK_ERROR_NONE;
-        controller->left_motor = MOTOR_COMMAND_UP;
-        controller->right_motor = MOTOR_COMMAND_UP;
-        controller->last_motion_direction = MOTOR_COMMAND_UP;
+        command_up_with_limits(controller, inputs);
         return current_outputs(controller);
     }
 
     if (inputs->down_pressed) {
-        controller->state = DESK_STATE_MOVING_DOWN;
         controller->error = DESK_ERROR_NONE;
-        controller->left_motor = MOTOR_COMMAND_DOWN;
-        controller->right_motor = MOTOR_COMMAND_DOWN;
-        controller->last_motion_direction = MOTOR_COMMAND_DOWN;
+        command_down_with_limits(controller, inputs);
         return current_outputs(controller);
     }
 

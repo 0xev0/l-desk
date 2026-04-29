@@ -27,3 +27,13 @@ target_include_directories(test_desk_controller_manual PRIVATE
 )
 
 add_test(NAME test_desk_controller_manual COMMAND test_desk_controller_manual)
+
+add_executable(test_desk_controller_limits
+    test_desk_controller_limits.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_limits PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_limits COMMAND test_desk_controller_limits)
