@@ -77,3 +77,13 @@ target_include_directories(test_desk_controller_calibration PRIVATE
 )
 
 add_test(NAME test_desk_controller_calibration COMMAND test_desk_controller_calibration)
+
+add_executable(test_desk_controller_edge_cases
+    test_desk_controller_edge_cases.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_edge_cases PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_edge_cases COMMAND test_desk_controller_edge_cases)

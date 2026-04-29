@@ -61,10 +61,49 @@ static bool has_limit_conflict(const desk_inputs_t *inputs)
            (inputs->right_upper_limit_active && inputs->right_lower_limit_active);
 }
 
+static bool left_limit_effective(const desk_controller_t *controller,
+                                 const desk_inputs_t *inputs,
+                                 motor_command_t direction)
+{
+    bool physical_limit = false;
+
+    if (direction == MOTOR_COMMAND_UP) {
+        physical_limit = inputs->left_upper_limit_active;
+    } else if (direction == MOTOR_COMMAND_DOWN) {
+        physical_limit = inputs->left_lower_limit_active;
+    }
+
+    return physical_limit ||
+           (controller->alignment_active &&
+            controller->alignment_direction == direction &&
+            controller->left_aligned);
+}
+
+static bool right_limit_effective(const desk_controller_t *controller,
+                                  const desk_inputs_t *inputs,
+                                  motor_command_t direction)
+{
+    bool physical_limit = false;
+
+    if (direction == MOTOR_COMMAND_UP) {
+        physical_limit = inputs->right_upper_limit_active;
+    } else if (direction == MOTOR_COMMAND_DOWN) {
+        physical_limit = inputs->right_lower_limit_active;
+    }
+
+    return physical_limit ||
+           (controller->alignment_active &&
+            controller->alignment_direction == direction &&
+            controller->right_aligned);
+}
+
 static void command_up_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
 {
-    controller->left_motor = inputs->left_upper_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
-    controller->right_motor = inputs->right_upper_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
+    bool left_limit_active = left_limit_effective(controller, inputs, MOTOR_COMMAND_UP);
+    bool right_limit_active = right_limit_effective(controller, inputs, MOTOR_COMMAND_UP);
+
+    controller->left_motor = left_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
+    controller->right_motor = right_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
 
     if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
         controller->state = DESK_STATE_IDLE;
@@ -77,8 +116,11 @@ static void command_up_with_limits(desk_controller_t *controller, const desk_inp
 
 static void command_down_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
 {
-    controller->left_motor = inputs->left_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
-    controller->right_motor = inputs->right_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+    bool left_limit_active = left_limit_effective(controller, inputs, MOTOR_COMMAND_DOWN);
+    bool right_limit_active = right_limit_effective(controller, inputs, MOTOR_COMMAND_DOWN);
+
+    controller->left_motor = left_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+    controller->right_motor = right_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
 
     if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
         controller->state = DESK_STATE_IDLE;
@@ -106,12 +148,9 @@ static void update_alignment(desk_controller_t *controller,
     bool left_limit_active = false;
     bool right_limit_active = false;
 
-    if (direction == MOTOR_COMMAND_UP) {
-        left_limit_active = inputs->left_upper_limit_active;
-        right_limit_active = inputs->right_upper_limit_active;
-    } else if (direction == MOTOR_COMMAND_DOWN) {
-        left_limit_active = inputs->left_lower_limit_active;
-        right_limit_active = inputs->right_lower_limit_active;
+    if (direction == MOTOR_COMMAND_UP || direction == MOTOR_COMMAND_DOWN) {
+        left_limit_active = left_limit_effective(controller, inputs, direction);
+        right_limit_active = right_limit_effective(controller, inputs, direction);
     } else {
         reset_alignment(controller);
         return;
