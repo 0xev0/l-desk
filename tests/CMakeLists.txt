@@ -47,3 +47,13 @@ target_include_directories(test_desk_controller_emergency PRIVATE
 )
 
 add_test(NAME test_desk_controller_emergency COMMAND test_desk_controller_emergency)
+
+add_executable(test_desk_controller_deadtime
+    test_desk_controller_deadtime.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_deadtime PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_deadtime COMMAND test_desk_controller_deadtime)
