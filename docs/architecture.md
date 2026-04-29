@@ -43,6 +43,8 @@ All states command stopped motors unless there is an explicit, currently valid m
 
 `DESK_STATE_ERROR` latches motion inhibited. Phase 1 clears errors only through `desk_controller_request_clear_error()` or reboot. Clearing an error does not itself command motion.
 
+Manual UP/DOWN requests are debounced in the controller before motion starts. Stop, emergency, both-buttons, and limit safety paths are not delayed by debounce.
+
 ## HAL Boundaries
 
 - `main/domain/*`: pure C state machine and motor output safety helpers.

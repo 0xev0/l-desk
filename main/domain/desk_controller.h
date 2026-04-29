@@ -15,9 +15,11 @@ typedef struct {
     motor_command_t last_motion_direction;
     motor_command_t pending_direction;
     motor_command_t alignment_direction;
+    motor_command_t debounce_candidate_direction;
     uint32_t deadtime_remaining_ms;
     uint32_t alignment_elapsed_ms;
     uint32_t calibration_elapsed_ms;
+    uint32_t button_debounce_elapsed_ms;
     bool alignment_active;
     bool left_aligned;
     bool right_aligned;

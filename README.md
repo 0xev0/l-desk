@@ -26,6 +26,7 @@ Implemented:
 - NC limit switch semantics
 - Emergency stop detection
 - Both-buttons-pressed safety stop
+- Manual button debounce before motion starts
 - Direction reversal dead time
 - Alignment timeout when one side reaches an endstop first
 - Calibration-down routine

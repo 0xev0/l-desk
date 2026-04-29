@@ -19,6 +19,7 @@ ctest --test-dir tests/build --output-on-failure
 - NC limit switch handling
 - Emergency stop behavior
 - Direction-change dead time
+- Manual button debounce
 - Independent axis stop and alignment timeout
 - Calibration-down behavior
 - Error state and clear-error behavior

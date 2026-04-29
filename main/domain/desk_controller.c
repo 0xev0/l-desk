@@ -10,6 +10,7 @@ desk_config_t desk_config_default(void)
         .direction_change_deadtime_ms = 300,
         .alignment_timeout_ms = 3000,
         .calibration_timeout_ms = 45000,
+        .button_debounce_ms = 50,
     };
 }
 
@@ -46,6 +47,12 @@ static void reset_alignment(desk_controller_t *controller)
     controller->alignment_elapsed_ms = 0;
     controller->left_aligned = false;
     controller->right_aligned = false;
+}
+
+static void reset_button_debounce(desk_controller_t *controller)
+{
+    controller->debounce_candidate_direction = MOTOR_COMMAND_STOP;
+    controller->button_debounce_elapsed_ms = 0;
 }
 
 static void enter_error(desk_controller_t *controller, desk_error_t error)
@@ -200,6 +207,34 @@ static motor_command_t requested_manual_direction(const desk_inputs_t *inputs)
     return MOTOR_COMMAND_STOP;
 }
 
+static motor_command_t debounced_manual_direction(desk_controller_t *controller,
+                                                  motor_command_t raw_requested,
+                                                  uint32_t elapsed_ms)
+{
+    if (controller->config.button_debounce_ms == 0) {
+        return raw_requested;
+    }
+
+    if (raw_requested == MOTOR_COMMAND_STOP) {
+        reset_button_debounce(controller);
+        return MOTOR_COMMAND_STOP;
+    }
+
+    if (controller->debounce_candidate_direction != raw_requested) {
+        controller->debounce_candidate_direction = raw_requested;
+        controller->button_debounce_elapsed_ms = elapsed_ms;
+    } else {
+        controller->button_debounce_elapsed_ms =
+            add_saturating_u32(controller->button_debounce_elapsed_ms, elapsed_ms);
+    }
+
+    if (controller->button_debounce_elapsed_ms >= controller->config.button_debounce_ms) {
+        return raw_requested;
+    }
+
+    return MOTOR_COMMAND_STOP;
+}
+
 static bool is_direction_reversal(motor_command_t previous, motor_command_t requested)
 {
     return (previous == MOTOR_COMMAND_UP && requested == MOTOR_COMMAND_DOWN) ||
@@ -307,9 +342,11 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
     controller->last_motion_direction = MOTOR_COMMAND_STOP;
     controller->pending_direction = MOTOR_COMMAND_STOP;
     controller->alignment_direction = MOTOR_COMMAND_STOP;
+    controller->debounce_candidate_direction = MOTOR_COMMAND_STOP;
     controller->deadtime_remaining_ms = 0;
     controller->alignment_elapsed_ms = 0;
     controller->calibration_elapsed_ms = 0;
+    controller->button_debounce_elapsed_ms = 0;
     controller->alignment_active = false;
     controller->left_aligned = false;
     controller->right_aligned = false;
@@ -347,7 +384,15 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
         return current_outputs(controller);
     }
 
-    motor_command_t requested = requested_manual_direction(inputs);
+    motor_command_t raw_requested = requested_manual_direction(inputs);
+    motor_command_t requested = debounced_manual_direction(controller, raw_requested, elapsed_ms);
+    if (raw_requested != MOTOR_COMMAND_STOP && requested == MOTOR_COMMAND_STOP) {
+        controller->state = DESK_STATE_IDLE;
+        controller->error = DESK_ERROR_NONE;
+        command_stop(controller);
+        return current_outputs(controller);
+    }
+
     if (handle_pending_deadtime(controller, inputs, elapsed_ms, requested)) {
         return current_outputs(controller);
     }
@@ -371,6 +416,7 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     controller->pending_direction = MOTOR_COMMAND_STOP;
     controller->deadtime_remaining_ms = 0;
     controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    reset_button_debounce(controller);
     reset_alignment(controller);
     return current_outputs(controller);
 }
@@ -384,4 +430,5 @@ void desk_controller_request_clear_error(desk_controller_t *controller)
     controller->state = DESK_STATE_IDLE;
     controller->error = DESK_ERROR_NONE;
     command_stop(controller);
+    reset_button_debounce(controller);
 }
