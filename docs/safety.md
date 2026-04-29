@@ -22,11 +22,13 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - One side reaching a limit first starts a short alignment window.
 - Alignment timeout enters ERROR.
 - Calibration timeout enters ERROR.
-- ERROR inhibits motion until explicit clear or reboot.
+- ERROR inhibits motion until `desk_controller_request_clear_error()` or reboot.
+- A side that reaches a matching limit is latched stopped until the current motion request ends or calibration completes.
 
 ## Known Limitations
 
 - The firmware cannot detect desk tilt without sensors.
 - The firmware cannot prove both actuators are synchronized during mid-stroke motion.
 - A wiring fault on a limit switch is treated as an active limit or hardware fault, not diagnosed precisely.
+- Phase 1 has no persistent fault log; errors are visible through controller state/log output only.
 - Physical emergency stop, fuses, cable sizing, grounding, and mechanical stops remain mandatory.

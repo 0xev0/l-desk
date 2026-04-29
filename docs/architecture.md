@@ -27,6 +27,8 @@ The application runs a fixed-period control task:
 5. Log state or error changes only.
 6. Sleep until the next control tick.
 
+The loop is implemented in `main/app/desk_app.c`. ESP-IDF and FreeRTOS calls are kept in the app/platform layers, not in `main/domain`.
+
 ## State Machine
 
 Phase 1 states:
@@ -38,6 +40,17 @@ Phase 1 states:
 - `DESK_STATE_ERROR`
 
 All states command stopped motors unless there is an explicit, currently valid manual or calibration request.
+
+`DESK_STATE_ERROR` latches motion inhibited. Phase 1 clears errors only through `desk_controller_request_clear_error()` or reboot. Clearing an error does not itself command motion.
+
+## HAL Boundaries
+
+- `main/domain/*`: pure C state machine and motor output safety helpers.
+- `main/hal/*`: small platform-independent interface types.
+- `main/platform/*`: ESP-IDF GPIO, timing, and BTS7960 implementation.
+- `tests/fake_gpio.*` and `tests/fake_time.*`: host-side fakes for future app-level tests.
+
+The domain layer has no direct `gpio_*`, `vTaskDelay`, or ESP-IDF dependency.
 
 ## Extension Points
 

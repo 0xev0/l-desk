@@ -30,6 +30,7 @@ Implemented:
 - Alignment timeout when one side reaches an endstop first
 - Calibration-down routine
 - Host-testable domain logic
+- ESP-IDF GPIO platform HAL for the ESP32-S3 target
 
 Not implemented:
 
@@ -49,8 +50,8 @@ source /Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh
 Set the target and build:
 
 ```sh
-idf.py set-target esp32s3
-idf.py build
+idf.py -B build_s3 set-target esp32s3
+idf.py -B build_s3 build
 ```
 
 ## Flash
@@ -70,6 +71,8 @@ cmake -S tests -B tests/build
 cmake --build tests/build
 ctest --test-dir tests/build --output-on-failure
 ```
+
+The domain tests do not require ESP-IDF, FreeRTOS, GPIO hardware, or an attached desk.
 
 ## Safety Disclaimer
 

@@ -2,6 +2,8 @@
 
 Domain tests run on the host without ESP-IDF hardware. The controller receives normalized inputs, so tests can exercise safety behavior deterministically without GPIO.
 
+`tests/fake_gpio.*` and `tests/fake_time.*` provide host-testable HAL fakes for future app-level tests. Current tests focus on the domain state machine and motor output invariants.
+
 ## Run Tests
 
 ```sh
@@ -21,6 +23,9 @@ ctest --test-dir tests/build --output-on-failure
 - Calibration-down behavior
 - Error state and clear-error behavior
 - Edge cases and invalid inputs
+- Limit switch bounce latching
+- Null arguments and default configuration
+- Large elapsed time values
 
 ## Safety-Critical Cases
 

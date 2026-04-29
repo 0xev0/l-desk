@@ -30,3 +30,5 @@ DOWN: RPWM inactive, LPWM active
 ```
 
 The platform driver must fail safe to STOP for invalid commands.
+
+During a direction command, if one matching NC limit opens, that axis is latched stopped for the current motion request. This prevents a bouncing limit switch from briefly re-enabling motion farther into the endstop.
