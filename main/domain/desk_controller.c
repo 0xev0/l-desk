@@ -39,6 +39,15 @@ static void command_stop(desk_controller_t *controller)
     controller->right_motor = MOTOR_COMMAND_STOP;
 }
 
+static void reset_alignment(desk_controller_t *controller)
+{
+    controller->alignment_active = false;
+    controller->alignment_direction = MOTOR_COMMAND_STOP;
+    controller->alignment_elapsed_ms = 0;
+    controller->left_aligned = false;
+    controller->right_aligned = false;
+}
+
 static void enter_error(desk_controller_t *controller, desk_error_t error)
 {
     controller->state = DESK_STATE_ERROR;
@@ -80,6 +89,65 @@ static void command_down_with_limits(desk_controller_t *controller, const desk_i
     }
 }
 
+static uint32_t add_saturating_u32(uint32_t left, uint32_t right)
+{
+    if (UINT_MAX - left < right) {
+        return UINT_MAX;
+    }
+
+    return left + right;
+}
+
+static void update_alignment(desk_controller_t *controller,
+                             const desk_inputs_t *inputs,
+                             motor_command_t direction,
+                             uint32_t elapsed_ms)
+{
+    bool left_limit_active = false;
+    bool right_limit_active = false;
+
+    if (direction == MOTOR_COMMAND_UP) {
+        left_limit_active = inputs->left_upper_limit_active;
+        right_limit_active = inputs->right_upper_limit_active;
+    } else if (direction == MOTOR_COMMAND_DOWN) {
+        left_limit_active = inputs->left_lower_limit_active;
+        right_limit_active = inputs->right_lower_limit_active;
+    } else {
+        reset_alignment(controller);
+        return;
+    }
+
+    if (left_limit_active && right_limit_active) {
+        reset_alignment(controller);
+        controller->state = DESK_STATE_IDLE;
+        controller->last_motion_direction = MOTOR_COMMAND_STOP;
+        command_stop(controller);
+        return;
+    }
+
+    if (!(left_limit_active || right_limit_active)) {
+        reset_alignment(controller);
+        return;
+    }
+
+    if (!controller->alignment_active ||
+        controller->alignment_direction != direction ||
+        controller->left_aligned != left_limit_active ||
+        controller->right_aligned != right_limit_active) {
+        controller->alignment_active = true;
+        controller->alignment_direction = direction;
+        controller->alignment_elapsed_ms = 0;
+        controller->left_aligned = left_limit_active;
+        controller->right_aligned = right_limit_active;
+        return;
+    }
+
+    controller->alignment_elapsed_ms = add_saturating_u32(controller->alignment_elapsed_ms, elapsed_ms);
+    if (controller->alignment_elapsed_ms >= controller->config.alignment_timeout_ms) {
+        enter_error(controller, DESK_ERROR_ALIGNMENT_TIMEOUT);
+    }
+}
+
 static motor_command_t requested_manual_direction(const desk_inputs_t *inputs)
 {
     if (inputs->up_pressed && !inputs->down_pressed) {
@@ -99,14 +167,19 @@ static bool is_direction_reversal(motor_command_t previous, motor_command_t requ
            (previous == MOTOR_COMMAND_DOWN && requested == MOTOR_COMMAND_UP);
 }
 
-static void command_manual_direction(desk_controller_t *controller, const desk_inputs_t *inputs, motor_command_t direction)
+static void command_manual_direction(desk_controller_t *controller,
+                                     const desk_inputs_t *inputs,
+                                     motor_command_t direction,
+                                     uint32_t elapsed_ms)
 {
     if (direction == MOTOR_COMMAND_UP) {
         controller->error = DESK_ERROR_NONE;
         command_up_with_limits(controller, inputs);
+        update_alignment(controller, inputs, direction, elapsed_ms);
     } else if (direction == MOTOR_COMMAND_DOWN) {
         controller->error = DESK_ERROR_NONE;
         command_down_with_limits(controller, inputs);
+        update_alignment(controller, inputs, direction, elapsed_ms);
     }
 }
 
@@ -130,7 +203,7 @@ static bool handle_pending_deadtime(desk_controller_t *controller,
     if (elapsed_ms >= controller->deadtime_remaining_ms) {
         controller->pending_direction = MOTOR_COMMAND_STOP;
         controller->deadtime_remaining_ms = 0;
-        command_manual_direction(controller, inputs, requested);
+        command_manual_direction(controller, inputs, requested, elapsed_ms);
         return true;
     }
 
@@ -153,6 +226,7 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
     controller->right_motor = MOTOR_COMMAND_STOP;
     controller->last_motion_direction = MOTOR_COMMAND_STOP;
     controller->pending_direction = MOTOR_COMMAND_STOP;
+    controller->alignment_direction = MOTOR_COMMAND_STOP;
     controller->deadtime_remaining_ms = 0;
     controller->alignment_elapsed_ms = 0;
     controller->calibration_elapsed_ms = 0;
@@ -201,7 +275,7 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
             return current_outputs(controller);
         }
 
-        command_manual_direction(controller, inputs, requested);
+        command_manual_direction(controller, inputs, requested, elapsed_ms);
         return current_outputs(controller);
     }
 
@@ -211,6 +285,7 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     controller->pending_direction = MOTOR_COMMAND_STOP;
     controller->deadtime_remaining_ms = 0;
     controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    reset_alignment(controller);
     return current_outputs(controller);
 }
 

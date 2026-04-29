@@ -57,3 +57,13 @@ target_include_directories(test_desk_controller_deadtime PRIVATE
 )
 
 add_test(NAME test_desk_controller_deadtime COMMAND test_desk_controller_deadtime)
+
+add_executable(test_desk_controller_alignment
+    test_desk_controller_alignment.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_alignment PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_alignment COMMAND test_desk_controller_alignment)
