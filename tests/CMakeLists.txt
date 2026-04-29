@@ -37,3 +37,13 @@ target_include_directories(test_desk_controller_limits PRIVATE
 )
 
 add_test(NAME test_desk_controller_limits COMMAND test_desk_controller_limits)
+
+add_executable(test_desk_controller_emergency
+    test_desk_controller_emergency.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_emergency PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_emergency COMMAND test_desk_controller_emergency)

@@ -114,6 +114,11 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
         return current_outputs(controller);
     }
 
+    if (inputs->emergency_active) {
+        enter_error(controller, DESK_ERROR_EMERGENCY_STOP);
+        return current_outputs(controller);
+    }
+
     if (has_limit_conflict(inputs)) {
         enter_error(controller, DESK_ERROR_LIMIT_CONFLICT);
         return current_outputs(controller);
