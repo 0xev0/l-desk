@@ -30,6 +30,7 @@ Implemented:
 - Direction reversal dead time
 - Alignment timeout when one side reaches an endstop first
 - Calibration-down routine
+- Calibration start rejected if UP or DOWN is held
 - Host-testable domain logic
 - ESP-IDF GPIO platform HAL for the ESP32-S3 target
 

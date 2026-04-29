@@ -141,6 +141,58 @@ static void calibration_aborts_on_emergency_stop(void)
     TEST_ASSERT_EQUAL_INT(DESK_ERROR_EMERGENCY_STOP, outputs.error);
 }
 
+static void calibration_with_up_pressed_is_rejected_without_motion(void)
+{
+    desk_controller_t controller;
+    desk_config_t config = test_config();
+    desk_controller_init(&controller, &config);
+    desk_inputs_t inputs = no_inputs();
+    inputs.calibrate_pressed = true;
+    inputs.up_pressed = true;
+
+    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
+
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
+}
+
+static void calibration_with_down_pressed_is_rejected_without_motion(void)
+{
+    desk_controller_t controller;
+    desk_config_t config = test_config();
+    desk_controller_init(&controller, &config);
+    desk_inputs_t inputs = no_inputs();
+    inputs.calibrate_pressed = true;
+    inputs.down_pressed = true;
+
+    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
+
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
+}
+
+static void calibration_request_while_moving_is_rejected_without_reversing(void)
+{
+    desk_controller_t controller;
+    desk_config_t config = test_config();
+    desk_controller_init(&controller, &config);
+    desk_inputs_t inputs = no_inputs();
+    inputs.up_pressed = true;
+    (void)tick_elapsed(&controller, inputs, 10);
+
+    inputs.calibrate_pressed = true;
+    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
+
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
+    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
+}
+
 int main(void)
 {
     calibration_starts_both_motors_down();
@@ -149,6 +201,9 @@ int main(void)
     calibration_with_both_lower_limits_already_active_succeeds_without_motion();
     calibration_times_out_if_lower_limits_are_not_reached();
     calibration_aborts_on_emergency_stop();
+    calibration_with_up_pressed_is_rejected_without_motion();
+    calibration_with_down_pressed_is_rejected_without_motion();
+    calibration_request_while_moving_is_rejected_without_reversing();
 
     return 0;
 }

@@ -18,6 +18,7 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - Emergency stop immediately commands both motors stopped.
 - Both UP and DOWN pressed stops both motors.
 - Manual button presses must remain stable before motion starts.
+- Calibration is rejected if UP or DOWN is held.
 - Matching active limit switch blocks motion farther into that limit.
 - Direction reversal enforces dead time.
 - One side reaching a limit first starts a short alignment window.

@@ -68,6 +68,11 @@ static bool has_limit_conflict(const desk_inputs_t *inputs)
            (inputs->right_upper_limit_active && inputs->right_lower_limit_active);
 }
 
+static bool manual_button_pressed(const desk_inputs_t *inputs)
+{
+    return inputs->up_pressed || inputs->down_pressed;
+}
+
 static bool left_limit_effective(const desk_controller_t *controller,
                                  const desk_inputs_t *inputs,
                                  motor_command_t direction)
@@ -378,9 +383,18 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
         return current_outputs(controller);
     }
 
-    if (controller->state == DESK_STATE_CALIBRATING_DOWN || inputs->calibrate_pressed) {
-        bool starting = controller->state != DESK_STATE_CALIBRATING_DOWN;
-        handle_calibration_down(controller, inputs, elapsed_ms, starting);
+    if (controller->state == DESK_STATE_CALIBRATING_DOWN) {
+        handle_calibration_down(controller, inputs, elapsed_ms, false);
+        return current_outputs(controller);
+    }
+
+    if (inputs->calibrate_pressed) {
+        if (manual_button_pressed(inputs) || controller->state != DESK_STATE_IDLE) {
+            enter_error(controller, DESK_ERROR_INVALID_TRANSITION);
+            return current_outputs(controller);
+        }
+
+        handle_calibration_down(controller, inputs, elapsed_ms, true);
         return current_outputs(controller);
     }
 

@@ -45,6 +45,8 @@ All states command stopped motors unless there is an explicit, currently valid m
 
 Manual UP/DOWN requests are debounced in the controller before motion starts. Stop, emergency, both-buttons, and limit safety paths are not delayed by debounce.
 
+Calibration starts only from idle and only when neither UP nor DOWN is pressed. Ambiguous calibration requests enter `DESK_STATE_ERROR` with `DESK_ERROR_INVALID_TRANSITION`.
+
 ## HAL Boundaries
 
 - `main/domain/*`: pure C state machine and motor output safety helpers.
