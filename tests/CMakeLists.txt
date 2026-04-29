@@ -67,3 +67,13 @@ target_include_directories(test_desk_controller_alignment PRIVATE
 )
 
 add_test(NAME test_desk_controller_alignment COMMAND test_desk_controller_alignment)
+
+add_executable(test_desk_controller_calibration
+    test_desk_controller_calibration.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_calibration PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_calibration COMMAND test_desk_controller_calibration)

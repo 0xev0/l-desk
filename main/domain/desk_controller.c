@@ -183,6 +183,47 @@ static void command_manual_direction(desk_controller_t *controller,
     }
 }
 
+static void finish_calibration_success(desk_controller_t *controller)
+{
+    controller->state = DESK_STATE_IDLE;
+    controller->error = DESK_ERROR_NONE;
+    controller->calibration_elapsed_ms = 0;
+    controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    command_stop(controller);
+    reset_alignment(controller);
+}
+
+static void handle_calibration_down(desk_controller_t *controller,
+                                    const desk_inputs_t *inputs,
+                                    uint32_t elapsed_ms,
+                                    bool starting)
+{
+    if (starting) {
+        controller->state = DESK_STATE_CALIBRATING_DOWN;
+        controller->error = DESK_ERROR_NONE;
+        controller->calibration_elapsed_ms = 0;
+        reset_alignment(controller);
+    } else {
+        controller->calibration_elapsed_ms = add_saturating_u32(controller->calibration_elapsed_ms, elapsed_ms);
+    }
+
+    if (inputs->left_lower_limit_active && inputs->right_lower_limit_active) {
+        finish_calibration_success(controller);
+        return;
+    }
+
+    if (controller->calibration_elapsed_ms >= controller->config.calibration_timeout_ms) {
+        enter_error(controller, DESK_ERROR_ALIGNMENT_TIMEOUT);
+        return;
+    }
+
+    controller->state = DESK_STATE_CALIBRATING_DOWN;
+    controller->left_motor = inputs->left_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+    controller->right_motor = inputs->right_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
+    controller->last_motion_direction = MOTOR_COMMAND_DOWN;
+    update_alignment(controller, inputs, MOTOR_COMMAND_DOWN, elapsed_ms);
+}
+
 static bool handle_pending_deadtime(desk_controller_t *controller,
                                     const desk_inputs_t *inputs,
                                     uint32_t elapsed_ms,
@@ -258,6 +299,12 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
 
     if (inputs->up_pressed && inputs->down_pressed) {
         enter_error(controller, DESK_ERROR_BOTH_BUTTONS_PRESSED);
+        return current_outputs(controller);
+    }
+
+    if (controller->state == DESK_STATE_CALIBRATING_DOWN || inputs->calibrate_pressed) {
+        bool starting = controller->state != DESK_STATE_CALIBRATING_DOWN;
+        handle_calibration_down(controller, inputs, elapsed_ms, starting);
         return current_outputs(controller);
     }
 
