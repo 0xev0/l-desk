@@ -1,4 +1,6 @@
 build/
+build_esp32s3/
+build_s3/
 tests/build/
 sdkconfig.old
 managed_components/

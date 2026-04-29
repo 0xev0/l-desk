@@ -1,2 +1,16 @@
-idf_component_register(SRCS "motorized_desk.c"
-                    INCLUDE_DIRS ".")
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "app/desk_app.c"
+        "domain/desk_controller.c"
+        "domain/motor_axis.c"
+        "platform/bts7960_driver.c"
+        "platform/esp_gpio_hal.c"
+        "platform/esp_time_hal.c"
+    INCLUDE_DIRS
+        "."
+        "app"
+        "domain"
+        "hal"
+        "platform"
+)

@@ -1,0 +1,20 @@
+#pragma once
+
+#define PIN_LEFT_RPWM 4
+#define PIN_LEFT_LPWM 5
+#define PIN_LEFT_ENABLE 15
+
+#define PIN_RIGHT_RPWM 6
+#define PIN_RIGHT_LPWM 7
+#define PIN_RIGHT_ENABLE 8
+
+#define PIN_LEFT_LIMIT_UP 16
+#define PIN_LEFT_LIMIT_DOWN 17
+#define PIN_RIGHT_LIMIT_UP 18
+#define PIN_RIGHT_LIMIT_DOWN 19
+
+#define PIN_BUTTON_UP 10
+#define PIN_BUTTON_DOWN 11
+#define PIN_BUTTON_CALIBRATE 12
+
+#define PIN_EMERGENCY_STOP 13

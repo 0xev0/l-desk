@@ -8,6 +8,16 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 enable_testing()
 
+add_library(fake_hal STATIC
+    fake_gpio.c
+    fake_time.c
+)
+target_include_directories(fake_hal PRIVATE
+    .
+    ../main/domain
+    ../main/hal
+)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c
