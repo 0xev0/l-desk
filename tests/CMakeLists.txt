@@ -17,3 +17,13 @@ target_include_directories(test_motor_axis PRIVATE
 )
 
 add_test(NAME test_motor_axis COMMAND test_motor_axis)
+
+add_executable(test_desk_controller_manual
+    test_desk_controller_manual.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_controller_manual PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_desk_controller_manual COMMAND test_desk_controller_manual)
