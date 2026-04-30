@@ -37,6 +37,8 @@ static const char *error_name(desk_error_t error)
         return "BOTH_BUTTONS_PRESSED";
     case DESK_ERROR_ALIGNMENT_TIMEOUT:
         return "ALIGNMENT_TIMEOUT";
+    case DESK_ERROR_CALIBRATION_TIMEOUT:
+        return "CALIBRATION_TIMEOUT";
     case DESK_ERROR_LIMIT_CONFLICT:
         return "LIMIT_CONFLICT";
     case DESK_ERROR_INVALID_TRANSITION:

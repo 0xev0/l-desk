@@ -22,6 +22,7 @@ ctest --test-dir tests/build --output-on-failure
 - Manual button debounce
 - Independent axis stop and alignment timeout
 - Calibration-down behavior
+- Calibration timeout error reporting
 - Calibration invalid transition behavior
 - Error state and clear-error behavior
 - Edge cases and invalid inputs

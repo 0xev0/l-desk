@@ -47,6 +47,8 @@ Manual UP/DOWN requests are debounced in the controller before motion starts. St
 
 Calibration starts only from idle and only when neither UP nor DOWN is pressed. Ambiguous calibration requests enter `DESK_STATE_ERROR` with `DESK_ERROR_INVALID_TRANSITION`.
 
+Alignment timeout and calibration timeout are separate domain errors so logs can distinguish side mismatch from a calibration routine that never reached both lower limits.
+
 ## HAL Boundaries
 
 - `main/domain/*`: pure C state machine and motor output safety helpers.

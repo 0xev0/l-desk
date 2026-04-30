@@ -120,7 +120,7 @@ static void calibration_times_out_if_lower_limits_are_not_reached(void)
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
     TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_ALIGNMENT_TIMEOUT, outputs.error);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_CALIBRATION_TIMEOUT, outputs.error);
 }
 
 static void calibration_aborts_on_emergency_stop(void)

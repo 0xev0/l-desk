@@ -292,7 +292,7 @@ static void handle_calibration_down(desk_controller_t *controller,
     }
 
     if (controller->calibration_elapsed_ms >= controller->config.calibration_timeout_ms) {
-        enter_error(controller, DESK_ERROR_ALIGNMENT_TIMEOUT);
+        enter_error(controller, DESK_ERROR_CALIBRATION_TIMEOUT);
         return;
     }
 

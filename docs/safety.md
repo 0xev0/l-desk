@@ -23,7 +23,7 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - Direction reversal enforces dead time.
 - One side reaching a limit first starts a short alignment window.
 - Alignment timeout enters ERROR.
-- Calibration timeout enters ERROR.
+- Calibration timeout enters ERROR with `DESK_ERROR_CALIBRATION_TIMEOUT`.
 - ERROR inhibits motion until `desk_controller_request_clear_error()` or reboot.
 - A side that reaches a matching limit is latched stopped until the current motion request ends or calibration completes.
 
