@@ -2,11 +2,14 @@
 
 #include "desk_config.h"
 #include "desk_controller.h"
+#include "desk_input_filter.h"
 #include "esp_gpio_hal.h"
 #include "esp_log.h"
 #include "esp_time_hal.h"
 
 static const char *const TAG = "desk_app";
+
+#define DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS 50U
 
 static const char *state_name(desk_state_t state)
 {
@@ -72,6 +75,9 @@ void desk_app_run(void)
     desk_config_t config = desk_config_default();
     desk_controller_init(&controller, &config);
 
+    desk_input_filter_t input_filter;
+    desk_input_filter_init(&input_filter, DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS);
+
     desk_outputs_t last_outputs = {
         .left_motor = MOTOR_COMMAND_STOP,
         .right_motor = MOTOR_COMMAND_STOP,
@@ -80,7 +86,8 @@ void desk_app_run(void)
     };
 
     while (true) {
-        desk_inputs_t inputs = esp_gpio_hal_read_inputs();
+        desk_inputs_t raw_inputs = esp_gpio_hal_read_inputs();
+        desk_inputs_t inputs = desk_input_filter_update(&input_filter, &raw_inputs, config.control_tick_ms);
         desk_outputs_t outputs = desk_controller_tick(&controller, &inputs, config.control_tick_ms);
         esp_gpio_hal_apply_outputs(&outputs);
 

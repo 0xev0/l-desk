@@ -6,6 +6,15 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+add_compile_options(
+    -Wall
+    -Wextra
+    -Werror
+    -Wpedantic
+    -Wformat=2
+    -Wshadow
+)
+
 enable_testing()
 
 add_library(fake_hal STATIC
@@ -97,3 +106,14 @@ target_include_directories(test_desk_controller_edge_cases PRIVATE
 )
 
 add_test(NAME test_desk_controller_edge_cases COMMAND test_desk_controller_edge_cases)
+
+add_executable(test_desk_input_filter
+    test_desk_input_filter.c
+    ../main/app/desk_input_filter.c
+)
+target_include_directories(test_desk_input_filter PRIVATE
+    ../main/app
+    ../main/domain
+)
+
+add_test(NAME test_desk_input_filter COMMAND test_desk_input_filter)

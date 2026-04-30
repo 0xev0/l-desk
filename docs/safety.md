@@ -16,6 +16,8 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - No automatic movement on boot.
 - Manual hold-to-run only.
 - Emergency stop immediately commands both motors stopped.
+- Emergency and limit activation is passed through immediately by the app input filter.
+- Emergency and limit release is debounced before motion can be re-enabled.
 - Both UP and DOWN pressed stops both motors.
 - Manual button presses must remain stable before motion starts.
 - Calibration is rejected if UP or DOWN is held.

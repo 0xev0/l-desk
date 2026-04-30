@@ -22,12 +22,19 @@ The application runs a fixed-period control task:
 
 1. Read raw GPIO inputs through the platform HAL.
 2. Normalize electrical levels into semantic inputs.
-3. Tick the domain controller with elapsed milliseconds.
-4. Apply motor outputs through the platform HAL.
-5. Log state or error changes only.
-6. Sleep until the next control tick.
+3. Filter safety inputs in the app layer.
+4. Tick the domain controller with elapsed milliseconds.
+5. Apply motor outputs through the platform HAL.
+6. Log state or error changes only.
+7. Sleep until the next control tick.
 
 The loop is implemented in `main/app/desk_app.c`. ESP-IDF and FreeRTOS calls are kept in the app/platform layers, not in `main/domain`.
+
+## Input Filtering
+
+`main/app/desk_input_filter.c` conditions safety inputs before they reach the domain controller. Emergency stop and NC limit activation are immediate. Clearing those inputs requires a stable inactive reading for `DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS`, currently 50 ms. This prevents contact bounce from re-enabling motion while preserving fail-safe stop behavior.
+
+Manual UP/DOWN/CALIBRATE buttons pass through the app input filter. Manual movement debounce is handled by the domain controller so hold-to-run behavior remains deterministic in host tests.
 
 ## State Machine
 
@@ -54,11 +61,14 @@ Direction reversal is detected before manual debounce. The old direction stops i
 ## HAL Boundaries
 
 - `main/domain/*`: pure C state machine and motor output safety helpers.
+- `main/app/desk_input_filter.*`: host-testable input conditioning for safety signals.
 - `main/hal/*`: small platform-independent interface types.
 - `main/platform/*`: ESP-IDF GPIO, timing, and BTS7960 implementation.
 - `tests/fake_gpio.*` and `tests/fake_time.*`: host-side fakes for future app-level tests.
 
 The domain layer has no direct `gpio_*`, `vTaskDelay`, or ESP-IDF dependency.
+
+Build warning policy is intentionally strict. Host tests and the ESP-IDF main component treat common warnings as errors.
 
 ## Extension Points
 

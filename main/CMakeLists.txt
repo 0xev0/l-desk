@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "app_main.c"
         "app/desk_app.c"
+        "app/desk_input_filter.c"
         "domain/desk_controller.c"
         "domain/motor_axis.c"
         "platform/bts7960_driver.c"
@@ -13,4 +14,12 @@ idf_component_register(
         "domain"
         "hal"
         "platform"
+)
+
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+    -Wformat=2
+    -Wshadow
 )

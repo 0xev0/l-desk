@@ -27,6 +27,7 @@ Implemented:
 - Emergency stop detection
 - Both-buttons-pressed safety stop
 - Manual button debounce before motion starts
+- Immediate safety input activation with debounced release for emergency/limit inputs
 - Direction reversal dead time
 - Alignment timeout when one side reaches an endstop first
 - Calibration-down routine
@@ -75,6 +76,8 @@ ctest --test-dir tests/build --output-on-failure
 ```
 
 The domain tests do not require ESP-IDF, FreeRTOS, GPIO hardware, or an attached desk.
+
+Host tests and the ESP-IDF main component build with strict warning flags including `-Wall`, `-Wextra`, `-Werror`, `-Wformat=2`, and `-Wshadow`.
 
 ## Safety Disclaimer
 
