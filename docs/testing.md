@@ -21,6 +21,7 @@ ctest --test-dir tests/build --output-on-failure
 - Direction-change dead time
 - Manual button debounce
 - Independent axis stop and alignment timeout
+- Direction reversal interaction with debounce
 - Calibration-down behavior
 - Calibration timeout error reporting
 - Calibration invalid transition behavior

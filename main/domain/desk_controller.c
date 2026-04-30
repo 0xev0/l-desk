@@ -399,6 +399,21 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     }
 
     motor_command_t raw_requested = requested_manual_direction(inputs);
+
+    if (handle_pending_deadtime(controller, inputs, elapsed_ms, raw_requested)) {
+        return current_outputs(controller);
+    }
+
+    if (raw_requested != MOTOR_COMMAND_STOP &&
+        is_direction_reversal(controller->last_motion_direction, raw_requested)) {
+        controller->pending_direction = raw_requested;
+        controller->deadtime_remaining_ms = controller->config.direction_change_deadtime_ms;
+        controller->state = DESK_STATE_IDLE;
+        reset_button_debounce(controller);
+        command_stop(controller);
+        return current_outputs(controller);
+    }
+
     motor_command_t requested = debounced_manual_direction(controller, raw_requested, elapsed_ms);
     if (raw_requested != MOTOR_COMMAND_STOP && requested == MOTOR_COMMAND_STOP) {
         controller->state = DESK_STATE_IDLE;
@@ -407,19 +422,7 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
         return current_outputs(controller);
     }
 
-    if (handle_pending_deadtime(controller, inputs, elapsed_ms, requested)) {
-        return current_outputs(controller);
-    }
-
     if (requested != MOTOR_COMMAND_STOP) {
-        if (is_direction_reversal(controller->last_motion_direction, requested)) {
-            controller->pending_direction = requested;
-            controller->deadtime_remaining_ms = controller->config.direction_change_deadtime_ms;
-            controller->state = DESK_STATE_IDLE;
-            command_stop(controller);
-            return current_outputs(controller);
-        }
-
         command_manual_direction(controller, inputs, requested, elapsed_ms);
         return current_outputs(controller);
     }

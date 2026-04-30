@@ -49,6 +49,8 @@ Calibration starts only from idle and only when neither UP nor DOWN is pressed. 
 
 Alignment timeout and calibration timeout are separate domain errors so logs can distinguish side mismatch from a calibration routine that never reached both lower limits.
 
+Direction reversal is detected before manual debounce. The old direction stops immediately and the configured dead-time starts at the reversal request; debounce applies to starting ordinary manual movement, not to delaying a safety stop.
+
 ## HAL Boundaries
 
 - `main/domain/*`: pure C state machine and motor output safety helpers.

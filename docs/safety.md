@@ -21,6 +21,7 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - Calibration is rejected if UP or DOWN is held.
 - Matching active limit switch blocks motion farther into that limit.
 - Direction reversal enforces dead time.
+- Direction reversal stop/dead-time is not delayed by button debounce.
 - One side reaching a limit first starts a short alignment window.
 - Alignment timeout enters ERROR.
 - Calibration timeout enters ERROR with `DESK_ERROR_CALIBRATION_TIMEOUT`.
