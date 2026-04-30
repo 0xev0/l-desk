@@ -42,6 +42,8 @@ Not implemented:
 - PID, encoders, closed-loop synchronization
 - Persistent storage
 
+Later phases are tracked in `docs/phase-roadmap.md`. Phase 2 feedback requirements are captured separately so sensor hardware can be chosen before implementation.
+
 ## Build
 
 Activate ESP-IDF if needed:

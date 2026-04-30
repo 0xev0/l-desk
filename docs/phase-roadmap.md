@@ -20,6 +20,8 @@ Scope:
 
 Do not implement until hardware is selected.
 
+Detailed requirements live in `docs/phase-2-feedback-requirements.md`.
+
 Candidate scope:
 
 - Add position or synchronization sensors through a new HAL interface.
