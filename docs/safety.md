@@ -29,6 +29,7 @@ This project controls a large moving desk. Firmware must fail safe, but firmware
 - Calibration timeout enters ERROR with `DESK_ERROR_CALIBRATION_TIMEOUT`.
 - ERROR inhibits motion until `desk_controller_request_clear_error()` or reboot.
 - A side that reaches a matching limit is latched stopped until the current motion request ends or calibration completes.
+- BTS7960 platform output is checked for command validity and coherent RPWM/LPWM/enable state before GPIO is updated.
 
 ## Known Limitations
 

@@ -70,6 +70,15 @@ The domain layer has no direct `gpio_*`, `vTaskDelay`, or ESP-IDF dependency.
 
 Build warning policy is intentionally strict. Host tests and the ESP-IDF main component treat common warnings as errors.
 
+## Output Safety Helpers
+
+`main/domain/motor_axis.*` owns the pure mapping from logical motor commands to BTS7960 RPWM/LPWM/enable outputs. The helper distinguishes basic safety from stricter coherence:
+
+- Safe output never drives RPWM and LPWM together.
+- Coherent output also requires STOP to de-energize every output and motion commands to assert enable with exactly one direction.
+
+The platform BTS7960 driver checks command validity and output coherence before touching GPIO. Invalid or incoherent output fails safe to STOP.
+
 ## Extension Points
 
 Future features may add position sensors, display, persistent presets, or connectivity, but those features must enter through application services that call the domain API. They must not bypass safety logic or directly command GPIO outputs.

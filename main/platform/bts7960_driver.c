@@ -35,7 +35,7 @@ void bts7960_driver_apply(const bts7960_driver_t *driver, motor_command_t comman
     }
 
     motor_axis_output_t output = motor_axis_command_to_output(command);
-    if (!motor_axis_output_is_safe(&output)) {
+    if (!motor_axis_command_is_valid(command) || !motor_axis_output_is_coherent(&output)) {
         output = motor_axis_command_to_output(MOTOR_COMMAND_STOP);
     }
 

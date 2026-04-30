@@ -2,6 +2,18 @@
 
 #include <stddef.h>
 
+bool motor_axis_command_is_valid(motor_command_t command)
+{
+    switch (command) {
+    case MOTOR_COMMAND_STOP:
+    case MOTOR_COMMAND_UP:
+    case MOTOR_COMMAND_DOWN:
+        return true;
+    default:
+        return false;
+    }
+}
+
 motor_axis_output_t motor_axis_command_to_output(motor_command_t command)
 {
     motor_axis_output_t output = {
@@ -34,4 +46,17 @@ bool motor_axis_output_is_safe(const motor_axis_output_t *output)
     }
 
     return !(output->rpwm_active && output->lpwm_active);
+}
+
+bool motor_axis_output_is_coherent(const motor_axis_output_t *output)
+{
+    if (!motor_axis_output_is_safe(output)) {
+        return false;
+    }
+
+    if (!output->rpwm_active && !output->lpwm_active) {
+        return !output->enable_active;
+    }
+
+    return output->enable_active;
 }

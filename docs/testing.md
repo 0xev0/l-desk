@@ -15,6 +15,7 @@ ctest --test-dir tests/build --output-on-failure
 ## Test Categories
 
 - Motor output safety
+- Motor output coherence
 - Manual hold-to-run movement
 - NC limit switch handling
 - Emergency stop behavior
