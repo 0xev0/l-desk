@@ -44,6 +44,8 @@ Not implemented:
 
 Later phases are tracked in `docs/phase-roadmap.md`. Phase 2 feedback requirements are captured separately so sensor hardware can be chosen before implementation.
 
+The first Phase 2 slice is present only as observational feedback diagnostics and a host fake provider. It does not affect motor commands.
+
 ## Build
 
 Activate ESP-IDF if needed:

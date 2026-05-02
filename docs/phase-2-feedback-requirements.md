@@ -78,7 +78,7 @@ Add host tests before implementing feedback behavior:
 
 ## First Implementation Slice
 
-The first code slice should be small:
+The first code slice is intentionally small:
 
 1. Add normalized feedback types with no platform dependencies.
 2. Add a fake feedback provider for host tests.
@@ -86,3 +86,5 @@ The first code slice should be small:
 4. Do not use feedback to command movement yet.
 
 That keeps Phase 2 observational before it becomes controlling.
+
+Status: implemented as a host-tested observational domain module. Feedback is not wired into motor control.

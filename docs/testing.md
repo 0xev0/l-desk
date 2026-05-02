@@ -24,6 +24,7 @@ ctest --test-dir tests/build --output-on-failure
 - Independent axis stop and alignment timeout
 - Direction reversal interaction with debounce
 - App-layer safety input filtering
+- Phase 2 observational feedback diagnostics
 - Calibration-down behavior
 - Calibration timeout error reporting
 - Calibration invalid transition behavior

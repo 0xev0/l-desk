@@ -82,3 +82,11 @@ The platform BTS7960 driver checks command validity and output coherence before 
 ## Extension Points
 
 Future features may add position sensors, display, persistent presets, or connectivity, but those features must enter through application services that call the domain API. They must not bypass safety logic or directly command GPIO outputs.
+
+## Phase 2 Feedback Extension
+
+`main/domain/desk_feedback.*` defines normalized feedback inputs and diagnostics without selecting hardware. It can report feedback OK, missing, or faulted, including left/right axis disagreement beyond a configured threshold.
+
+`main/hal/desk_feedback_source.h` defines the small provider interface future platform drivers can implement. Tests use `tests/fake_feedback.*` so feedback behavior can be exercised on the host before ESP32 sensor drivers exist.
+
+Feedback is observational at this stage. It is not connected to motor command decisions, automatic positioning, or calibration behavior.

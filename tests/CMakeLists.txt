@@ -117,3 +117,16 @@ target_include_directories(test_desk_input_filter PRIVATE
 )
 
 add_test(NAME test_desk_input_filter COMMAND test_desk_input_filter)
+
+add_executable(test_desk_feedback
+    test_desk_feedback.c
+    fake_feedback.c
+    ../main/domain/desk_feedback.c
+)
+target_include_directories(test_desk_feedback PRIVATE
+    .
+    ../main/domain
+    ../main/hal
+)
+
+add_test(NAME test_desk_feedback COMMAND test_desk_feedback)

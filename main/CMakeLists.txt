@@ -4,6 +4,7 @@ idf_component_register(
         "app/desk_app.c"
         "app/desk_input_filter.c"
         "domain/desk_controller.c"
+        "domain/desk_feedback.c"
         "domain/motor_axis.c"
         "platform/bts7960_driver.c"
         "platform/esp_gpio_hal.c"
