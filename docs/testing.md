@@ -25,6 +25,7 @@ ctest --test-dir tests/build --output-on-failure
 - Direction reversal interaction with debounce
 - App-layer safety input filtering
 - Phase 2 observational feedback diagnostics
+- Phase 2 feedback monitor temporal plausibility
 - Calibration-down behavior
 - Calibration timeout error reporting
 - Calibration invalid transition behavior

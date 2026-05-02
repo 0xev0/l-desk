@@ -88,3 +88,10 @@ The first code slice is intentionally small:
 That keeps Phase 2 observational before it becomes controlling.
 
 Status: implemented as a host-tested observational domain module. Feedback is not wired into motor control.
+
+The current monitor can detect:
+
+- Missing feedback.
+- Axis-reported feedback faults.
+- Left/right position disagreement.
+- Implausible position jumps between valid samples.

@@ -89,4 +89,6 @@ Future features may add position sensors, display, persistent presets, or connec
 
 `main/hal/desk_feedback_source.h` defines the small provider interface future platform drivers can implement. Tests use `tests/fake_feedback.*` so feedback behavior can be exercised on the host before ESP32 sensor drivers exist.
 
+The feedback monitor adds temporal plausibility checks between valid samples. A missing or faulted sample resets monitor history, and an implausible position step is reported as a feedback fault rather than being smoothed or corrected.
+
 Feedback is observational at this stage. It is not connected to motor command decisions, automatic positioning, or calibration behavior.
