@@ -95,3 +95,5 @@ The current monitor can detect:
 - Axis-reported feedback faults.
 - Left/right position disagreement.
 - Implausible position jumps between valid samples.
+
+The app layer now has a host-tested feedback observer that reads through `desk_feedback_source_t` and feeds the domain monitor. It remains unused by the control loop until real sensor hardware and policy decisions are available.

@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "app_main.c"
         "app/desk_app.c"
+        "app/desk_feedback_observer.c"
         "app/desk_input_filter.c"
         "domain/desk_controller.c"
         "domain/desk_feedback.c"

@@ -26,6 +26,7 @@ ctest --test-dir tests/build --output-on-failure
 - App-layer safety input filtering
 - Phase 2 observational feedback diagnostics
 - Phase 2 feedback monitor temporal plausibility
+- Phase 2 app-layer feedback observer
 - Calibration-down behavior
 - Calibration timeout error reporting
 - Calibration invalid transition behavior

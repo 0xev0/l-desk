@@ -130,3 +130,18 @@ target_include_directories(test_desk_feedback PRIVATE
 )
 
 add_test(NAME test_desk_feedback COMMAND test_desk_feedback)
+
+add_executable(test_desk_feedback_observer
+    test_desk_feedback_observer.c
+    fake_feedback.c
+    ../main/app/desk_feedback_observer.c
+    ../main/domain/desk_feedback.c
+)
+target_include_directories(test_desk_feedback_observer PRIVATE
+    .
+    ../main/app
+    ../main/domain
+    ../main/hal
+)
+
+add_test(NAME test_desk_feedback_observer COMMAND test_desk_feedback_observer)

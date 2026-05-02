@@ -91,4 +91,6 @@ Future features may add position sensors, display, persistent presets, or connec
 
 The feedback monitor adds temporal plausibility checks between valid samples. A missing or faulted sample resets monitor history, and an implausible position step is reported as a feedback fault rather than being smoothed or corrected.
 
+`main/app/desk_feedback_observer.*` wraps a feedback source and the domain monitor for app-level polling. It is host-tested with the fake provider and is ready for future platform sensor drivers, but it is not connected to motor command decisions.
+
 Feedback is observational at this stage. It is not connected to motor command decisions, automatic positioning, or calibration behavior.
