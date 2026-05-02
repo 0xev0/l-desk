@@ -93,4 +93,6 @@ The feedback monitor adds temporal plausibility checks between valid samples. A 
 
 `main/app/desk_feedback_observer.*` wraps a feedback source and the domain monitor for app-level polling. It is host-tested with the fake provider and is ready for future platform sensor drivers, but it is not connected to motor command decisions.
 
+`main/platform/feedback_none_source.*` is the current runtime source. It reports feedback missing until real sensor hardware is selected and implemented. The app loop polls the observer and logs feedback diagnostic changes only.
+
 Feedback is observational at this stage. It is not connected to motor command decisions, automatic positioning, or calibration behavior.

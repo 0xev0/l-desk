@@ -33,3 +33,13 @@ desk_feedback_diagnostics_t desk_feedback_observer_poll(desk_feedback_observer_t
     desk_feedback_inputs_t inputs = observer->source.read(observer->source.context);
     return desk_feedback_monitor_update(&observer->monitor, &observer->config, &inputs);
 }
+
+bool desk_feedback_diagnostics_changed(const desk_feedback_diagnostics_t *previous,
+                                       const desk_feedback_diagnostics_t *current)
+{
+    if (previous == NULL || current == NULL) {
+        return true;
+    }
+
+    return previous->status != current->status || previous->error != current->error;
+}

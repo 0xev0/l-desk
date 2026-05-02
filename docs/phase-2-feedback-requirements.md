@@ -96,4 +96,4 @@ The current monitor can detect:
 - Left/right position disagreement.
 - Implausible position jumps between valid samples.
 
-The app layer now has a host-tested feedback observer that reads through `desk_feedback_source_t` and feeds the domain monitor. It remains unused by the control loop until real sensor hardware and policy decisions are available.
+The app layer now has a host-tested feedback observer that reads through `desk_feedback_source_t` and feeds the domain monitor. The runtime currently uses a no-feedback source that reports missing feedback and logs diagnostic changes only.

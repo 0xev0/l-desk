@@ -136,12 +136,14 @@ add_executable(test_desk_feedback_observer
     fake_feedback.c
     ../main/app/desk_feedback_observer.c
     ../main/domain/desk_feedback.c
+    ../main/platform/feedback_none_source.c
 )
 target_include_directories(test_desk_feedback_observer PRIVATE
     .
     ../main/app
     ../main/domain
     ../main/hal
+    ../main/platform
 )
 
 add_test(NAME test_desk_feedback_observer COMMAND test_desk_feedback_observer)

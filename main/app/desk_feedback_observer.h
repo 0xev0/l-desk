@@ -13,3 +13,5 @@ void desk_feedback_observer_init(desk_feedback_observer_t *observer,
                                  desk_feedback_source_t source,
                                  desk_feedback_config_t config);
 desk_feedback_diagnostics_t desk_feedback_observer_poll(desk_feedback_observer_t *observer);
+bool desk_feedback_diagnostics_changed(const desk_feedback_diagnostics_t *previous,
+                                       const desk_feedback_diagnostics_t *current);

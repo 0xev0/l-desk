@@ -1,5 +1,6 @@
 #include "desk_feedback_observer.h"
 #include "fake_feedback.h"
+#include "feedback_none_source.h"
 #include "test_support.h"
 
 static desk_feedback_config_t test_config(void)
@@ -97,6 +98,38 @@ static void null_observer_poll_reports_invalid_input(void)
     TEST_ASSERT_EQUAL_INT(DESK_FEEDBACK_ERROR_INVALID_INPUT, diagnostics.error);
 }
 
+static void no_feedback_source_reports_missing_feedback(void)
+{
+    desk_feedback_source_t source = feedback_none_source();
+    desk_feedback_inputs_t inputs = source.read(source.context);
+
+    TEST_ASSERT_EQUAL_INT(DESK_AXIS_FEEDBACK_MISSING, inputs.left.status);
+    TEST_ASSERT_EQUAL_INT(DESK_AXIS_FEEDBACK_MISSING, inputs.right.status);
+}
+
+static void diagnostics_change_detector_checks_status_and_error(void)
+{
+    desk_feedback_diagnostics_t previous = {
+        .status = DESK_FEEDBACK_DIAGNOSTIC_OK,
+        .error = DESK_FEEDBACK_ERROR_NONE,
+    };
+    desk_feedback_diagnostics_t same = previous;
+    desk_feedback_diagnostics_t status_changed = {
+        .status = DESK_FEEDBACK_DIAGNOSTIC_MISSING,
+        .error = DESK_FEEDBACK_ERROR_NONE,
+    };
+    desk_feedback_diagnostics_t error_changed = {
+        .status = DESK_FEEDBACK_DIAGNOSTIC_OK,
+        .error = DESK_FEEDBACK_ERROR_POSITION_JUMP,
+    };
+
+    TEST_ASSERT_FALSE(desk_feedback_diagnostics_changed(&previous, &same));
+    TEST_ASSERT_TRUE(desk_feedback_diagnostics_changed(&previous, &status_changed));
+    TEST_ASSERT_TRUE(desk_feedback_diagnostics_changed(&previous, &error_changed));
+    TEST_ASSERT_TRUE(desk_feedback_diagnostics_changed(NULL, &same));
+    TEST_ASSERT_TRUE(desk_feedback_diagnostics_changed(&previous, NULL));
+}
+
 int main(void)
 {
     observer_reports_ok_from_valid_source();
@@ -104,6 +137,8 @@ int main(void)
     observer_uses_monitor_for_position_jump_faults();
     observer_rejects_missing_read_function();
     null_observer_poll_reports_invalid_input();
+    no_feedback_source_reports_missing_feedback();
+    diagnostics_change_detector_checks_status_and_error();
 
     return 0;
 }

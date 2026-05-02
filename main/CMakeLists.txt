@@ -10,6 +10,7 @@ idf_component_register(
         "platform/bts7960_driver.c"
         "platform/esp_gpio_hal.c"
         "platform/esp_time_hal.c"
+        "platform/feedback_none_source.c"
     INCLUDE_DIRS
         "."
         "app"
