@@ -1,34 +1,66 @@
 # Electrical Design
 
-The physical design uses a 12 V 20/30 A supply with a general fuse and individual fused branches for each actuator.
-
-Each actuator is driven by one BTS7960 H-bridge module. Logic ground must be common between the ESP32-S3, driver inputs, and the 12 V system ground. Motor current must not be carried through breadboards or Dupont jumpers.
-
-## Limit Switches
-
-The four limit switches are normally closed and connected to ground in the healthy, not-triggered state. ESP32 inputs use pull-ups:
+## Power Topology
 
 ```text
-LOW  = closed, healthy, not triggered
-HIGH = open, limit reached, or wiring fault
+AC mains -> protected 12 V PSU
+                    |
+                    +-> logic fuse -> 12/5 V regulator -> ESP32 + BTS logic
+                    |
+                    +-> main motor fuse -> E-stop contactor -> 3 fused branches
+                                                           -> BTS A/B/C -> motors
 ```
 
-The firmware treats HIGH as active and stops movement toward that limit.
+The logic branch stays powered when the E-stop drops the motor contactor so the
+ESP32 can record the event and remain in `ERROR`. All 0 V logic and motor grounds
+share a deliberate common reference. Protective earth follows PSU, enclosure,
+and frame manufacturer requirements; it is not the same as signal ground.
 
-## Emergency Stop
+Never route motor current through a breadboard, DevKit adapter, Dupont lead, or
+small signal terminal. Separate motor, Hall, limits, and button harnesses.
 
-The emergency stop may physically interrupt motor power. The firmware also monitors an emergency input and stops all commanded motor outputs when active.
+## BTS7960 Per Axis
 
-## BTS7960 Output Semantics
+- `B+`/`B-`: fused 12 V motor branch and motor return.
+- `M+`/`M-`: actuator motor leads; swap only after confirming direction.
+- `VCC`: regulated 5 V logic if required by the module revision.
+- `GND`: common logic ground.
+- `RPWM`/`LPWM`: separate 20 kHz ESP32 LEDC outputs.
+- `R_EN` and `L_EN`: tied together and driven by the axis enable GPIO.
+- Enable needs a physical pulldown so reset/boot keeps the bridge disabled.
 
-For each motor:
+Confirm the exact module accepts ESP32 3.3 V HIGH on PWM and enable inputs.
+Clone modules differ. Verify heatsinking, terminals, copper, and thermal rise
+with the purchased revision; the advertised chip current is not the module's
+guaranteed continuous current.
+
+## NC Inputs
+
+Each limit and the monitored E-stop contact closes to ground when healthy:
 
 ```text
-STOP: RPWM inactive, LPWM inactive
-UP:   RPWM active,   LPWM inactive
-DOWN: RPWM inactive, LPWM active
+LOW  = closed, healthy, inactive
+HIGH = open, reached, E-stop active, or broken wire
 ```
 
-The platform driver must fail safe to STOP for invalid commands.
+The firmware enables internal pull-ups. For long cables, fit suitable external
+pull-ups near the controller and validate EMC behavior. Limit/E-stop activation
+is immediate; only release is filtered for 50 ms.
 
-During a direction command, if one matching NC limit opens, that axis is latched stopped for the current motion request. This prevents a bouncing limit switch from briefly re-enabling motion farther into the endstop.
+Use separate E-stop contacts: one in the contactor safety circuit and one GPIO
+monitor contact. Firmware detection is supplementary and must not be required
+to remove motor power. Fit coil suppression appropriate to the DC contactor.
+
+## Hall Inputs
+
+Six Hall channels connect to PCNT GPIOs. Open-collector outputs require pull-ups
+to 3.3 V. A 5 V push-pull output must pass through a proper buffer. Keep Hall
+cables away from motor leads, use twisted signal/ground pairs or shielding as
+appropriate, and validate the 1 us digital glitch filter against real pulses.
+
+## Startup and Failure
+
+GPIO enables have pulldowns. Firmware initializes enable LOW and PWM zero before
+any motor driver can be enabled. Any initialization, output, Hall, or watchdog
+failure leaves requested outputs stopped. A physical power interruption must
+also default the contactor open.

@@ -1,42 +1,67 @@
 # Testing
 
-Domain tests run on the host without ESP-IDF hardware. The controller receives normalized inputs, so tests can exercise safety behavior deterministically without GPIO.
+## Host Suite
 
-`tests/fake_gpio.*` and `tests/fake_time.*` provide host-testable HAL fakes for future app-level tests. Current tests focus on the domain state machine, app input filtering, and motor output invariants.
-
-## Run Tests
+Eleven CTest executables cover domain, application, input filtering, fake HAL,
+and output invariants without ESP-IDF hardware.
 
 ```sh
-cmake -S tests -B tests/build
-cmake --build tests/build
-ctest --test-dir tests/build --output-on-failure
+cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
+cmake --build build-host --parallel
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+  ctest --test-dir build-host --output-on-failure
 ```
 
-## Test Categories
+The suite includes 2,048 combinations of six limit states plus UP, DOWN,
+CALIBRATE, E-stop, and hardware-fault inputs. Every error output must stop all
+three axes; every logical motor command must map to mutually exclusive RPWM and
+LPWM.
 
-- Motor output safety
-- Motor output coherence
-- Manual hold-to-run movement
-- NC limit switch handling
-- Emergency stop behavior
-- Direction-change dead time
-- Manual button debounce
-- Independent axis stop and alignment timeout
-- Direction reversal interaction with debounce
-- App-layer safety input filtering
-- Phase 2 observational feedback diagnostics
-- Phase 2 feedback monitor temporal plausibility
-- Phase 2 app-layer feedback observer
-- Phase 2 no-feedback platform source
-- Calibration-down behavior
-- Calibration timeout error reporting
-- Calibration invalid transition behavior
-- Error state and clear-error behavior
-- Edge cases and invalid inputs
-- Limit switch bounce latching
-- Null arguments and default configuration
-- Large elapsed time values
+## Coverage
 
-## Safety-Critical Cases
+Configure a Clang coverage build:
 
-Tests must prove that no state commands unsafe motor output, emergency stop always stops motion, active matching limits block movement, impossible limit combinations enter ERROR, timeout behavior is deterministic, and safety input activation is never delayed by filtering.
+```sh
+cmake -S tests -B build-coverage -DDESK_ENABLE_COVERAGE=ON
+cmake --build build-coverage --parallel
+mkdir -p /tmp/motorized-desk-coverage
+LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
+  ctest --test-dir build-coverage --output-on-failure
+```
+
+Merge with `llvm-profdata` and report with `llvm-cov` over
+`desk_controller.c`, `motor_axis.c`, `desk_app.c`, and `desk_input_filter.c`.
+The current result is 95.83% lines, 95.79% regions, and 100% functions. Keep
+line coverage at or above 95% and all safety transitions explicitly tested.
+
+## Covered Behavior
+
+- `SAFE_START`, held boot buttons, manual hold-to-run, and immediate release
+- Three-axis upper/lower limits and all six endstop arrival orders
+- Alignment and calibration timeout
+- Long-hold calibration, abort, and already-at-limit cases
+- E-stop, both buttons, limit conflict, read/write/zero/watchdog failures
+- Direction reversal and dead time
+- Immediate safety activation and filtered release bounce
+- Hall missing, wrong direction, stall, warning trim, and hard skew
+- Invalid time, arguments, configuration, and motor output vectors
+- Explicit long-hold/release error clear without automatic motion
+- Deterministic repeated ticks and saturating timing arithmetic
+
+## ESP-IDF Build
+
+```sh
+source /Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh
+idf.py build
+```
+
+The main component treats format, shadow, conversion, signed conversion, and
+enum-switch warnings as errors. Host builds additionally use pedantic and
+undefined-macro warnings.
+
+## Hardware Tests Still Required
+
+Host tests cannot prove GPIO voltage, clone BTS timing, PCNT noise immunity,
+contactor wiring, thermal margin, Hall scale, actuator mismatch, EMC behavior,
+or mechanical skew. Complete the progressive tests in `commissioning.md` and
+record minimum free heap during the 8 hour soak.

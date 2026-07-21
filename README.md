@@ -1,90 +1,82 @@
-# Motorized Desk Firmware
+# Three-Axis Motorized Desk Firmware
 
-ESP-IDF firmware for a custom two-actuator L-shaped standing desk controller.
+ESP-IDF firmware for a homelab L-shaped standing desk with three Hall-feedback
+linear actuators and one BTS7960 driver per actuator. The current release is a
+local, hold-to-run controller with downward calibration, synchronized motion,
+fail-safe NC limits, and a monitored emergency stop.
 
-Phase 1 is intentionally conservative: manual hold-to-run movement, calibration downward to the lower endstops, fail-safe normally-closed limit switch handling, emergency stop handling, direction-change dead time, and alignment timeout protection.
+## Current Status
 
-## Hardware Summary
-
-- ESP32-S3 DevKitC-1
-- Two 12 V linear actuators, one per powered lifting column
-- Two BTS7960 H-bridge motor drivers
-- Four normally-closed limit switches
-- UP, DOWN, optional CALIBRATE buttons
-- Emergency stop / safety input
-- 12 V 20/30 A PSU, general fuse, and individual actuator fuses
-- 12 V to 5 V regulator for ESP32 power
-
-The actuators provide vertical force only. The desk frame and mechanical guides must handle lateral loads and racking forces.
-
-## Phase 1 Scope
+The firmware architecture, host tests, sanitizers, and ESP-IDF 6.0 build pass.
+The physical desk is **not production ready** until the exact actuators, power
+supply, BTS7960 modules, wiring, Hall scale, thermal behavior, and mechanical
+frame pass [commissioning](docs/commissioning.md).
 
 Implemented:
 
-- Manual hold-to-run UP and DOWN
-- Independent left/right motor outputs
-- NC limit switch semantics
-- Emergency stop detection
-- Both-buttons-pressed safety stop
-- Manual button debounce before motion starts
-- Immediate safety input activation with debounced release for emergency/limit inputs
-- Direction reversal dead time
-- Alignment timeout when one side reaches an endstop first
-- Calibration-down routine
-- Calibration start rejected if UP or DOWN is held
-- Host-testable domain logic
-- ESP-IDF GPIO platform HAL for the ESP32-S3 target
+- Three independently controlled actuator axes
+- `SAFE_START`, manual UP/DOWN, calibration, and latched `ERROR` states
+- Six NC upper/lower limits with immediate activation and filtered release
+- E-stop detection, both-buttons fault, and no movement on boot
+- 300 ms direction reversal dead time and 500 ms soft start
+- Hall quadrature counting through ESP-IDF PCNT
+- Hall direction, missing feedback, stall, and skew detection
+- PWM trim of the leading axis and hard stop at the configured skew threshold
+- 750 ms endstop alignment window for all three arrival orders
+- Injectable HAL, host fake, watchdog, strict warnings, ASan, and UBSan tests
+- Deliberate error clear: hold CALIBRATE for 2 seconds, then release
 
-Not implemented:
+Not implemented: presets, automatic positioning, NVS, display, WiFi, BLE,
+Home Assistant, OTA, or remote movement.
 
-- WiFi, Bluetooth, web UI, Home Assistant, display, OTA
-- Height memory or automatic positioning
-- PID, encoders, closed-loop synchronization
-- Persistent storage
+## Target Hardware
 
-Later phases are tracked in `docs/phase-roadmap.md`. Phase 2 feedback requirements are captured separately so sensor hardware can be chosen before implementation.
+- ESP32-S3-DevKitC-1U-N8R8 plus external 2.4 GHz antenna
+- Three identical 12 V, 1000 N, 500 mm actuators with quadrature Hall outputs
+- Three matching BTS7960/IBT-2 modules
+- Six NC endstop switches
+- UP, DOWN, and CALIBRATE buttons
+- Dual-contact latching NC E-stop and DC-rated contactor
+- Properly sized 12 V PSU, 12 V to 5 V regulator, main fuse, three motor fuses,
+  and one logic fuse
+- Enclosure, terminal blocks, ferrules, strain relief, and locking connectors
 
-The first Phase 2 slice is present only as observational feedback diagnostics, a host fake provider, a no-feedback runtime source, and app-level diagnostic logging. It does not affect motor commands.
+See [hardware](docs/hardware.md), [electrical design](docs/electrical-design.md),
+and [pinout](docs/pinout.md) before connecting anything.
 
-## Build
-
-Activate ESP-IDF if needed:
+## Firmware Build
 
 ```sh
 source /Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh
+idf.py set-target esp32s3
+idf.py build
 ```
 
-Set the target and build:
+The activation script defines `idf.py` as an interactive shell alias. In a
+non-interactive shell, invoke its Python entry point directly if necessary.
+
+Flash through the DevKit USB-to-UART port because GPIO19/20 are used for Hall:
 
 ```sh
-idf.py -B build_s3 set-target esp32s3
-idf.py -B build_s3 build
+idf.py -p /dev/tty.usbserial-XXXX flash monitor
 ```
-
-## Flash
-
-```sh
-idf.py -p /dev/tty.usbmodemXXXX flash monitor
-```
-
-Replace the port with the connected ESP32-S3 serial device.
 
 ## Host Tests
 
-Host-side tests use CMake/CTest and a normal C compiler:
-
 ```sh
-cmake -S tests -B tests/build
-cmake --build tests/build
-ctest --test-dir tests/build --output-on-failure
+cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
+cmake --build build-host --parallel
+ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+  ctest --test-dir build-host --output-on-failure
 ```
 
-The domain tests do not require ESP-IDF, FreeRTOS, GPIO hardware, or an attached desk.
+Apple's ASan runtime does not support LeakSanitizer. The control path performs
+no project-owned heap allocation; heap stability still has to be measured on
+the ESP32 during the soak test.
 
-Host tests and the ESP-IDF main component build with strict warning flags including `-Wall`, `-Wextra`, `-Werror`, `-Wformat=2`, and `-Wshadow`.
+## Safety
 
-## Safety Disclaimer
-
-This firmware controls moving hardware capable of injury and property damage. Firmware is only one safety layer. Use correct mechanical design, physical emergency stop, fuses, cable sizing, grounding, actuator mounting, lateral guides, and mechanical hard stops.
-
-When uncertain, the firmware must stop motion.
+This firmware controls hardware capable of injury and property damage. It is
+not a substitute for a rigid guided structure, hard stops, physical E-stop,
+contactor, fuses, cable sizing, grounding, thermal validation, and cautious
+commissioning. Never power motors from a PC USB port.

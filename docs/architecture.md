@@ -1,98 +1,92 @@
 # Architecture
 
-The firmware uses a clean layered architecture:
+## Layers
 
 ```text
-app_main / platform startup
-        ↓
-application runtime loop
-        ↓
-domain state machine
-        ↓
-HAL interfaces
-        ↓
-ESP-IDF hardware implementation
+app_main
+  -> desk_app_run (ESP runtime loop)
+  -> desk_app_step (platform-independent orchestration)
+  -> desk_controller_tick (pure domain)
+  -> normalized desk_outputs_t
+  -> desk_platform_t / ESP-IDF backend
 ```
 
-The domain layer contains no ESP-IDF GPIO, FreeRTOS, or hardware-specific calls. It receives normalized inputs and elapsed time, then returns normalized motor commands and controller state.
+`desk_controller_tick()` has no ESP-IDF, GPIO, PCNT, logging, heap, or FreeRTOS
+dependency. It receives normalized inputs and absolute monotonic `uint64_t`
+time, then updates a caller-owned `desk_controller_t`.
 
-## Runtime Loop
+Three axes are fixed at compile time through `DESK_AXIS_COUNT = 3`. Per-axis
+state is held in static arrays, making each control tick O(3) with bounded work.
 
-The application runs a fixed-period control task:
+## Runtime
 
-1. Read raw GPIO inputs through the platform HAL.
-2. Normalize electrical levels into semantic inputs.
-3. Filter safety inputs in the app layer.
-4. Tick the domain controller with elapsed milliseconds.
-5. Apply motor outputs through the platform HAL.
-6. Log state or error changes only.
-7. Sleep until the next control tick.
+Every nominal 10 ms iteration:
 
-The loop is implemented in `main/app/desk_app.c`. ESP-IDF and FreeRTOS calls are kept in the app/platform layers, not in `main/domain`.
+1. Read normalized controls, six limits, and three Hall counters through HAL.
+2. Activate limits/E-stop immediately and debounce only their release for 50 ms.
+3. Evaluate the state machine using actual monotonic time.
+4. Validate the complete three-axis output vector.
+5. Apply STOP/LEDC/enable sequences through each BTS7960 driver.
+6. Service the task watchdog.
+7. Log only state, error, or feedback-warning changes.
 
-## Input Filtering
-
-`main/app/desk_input_filter.c` conditions safety inputs before they reach the domain controller. Emergency stop and NC limit activation are immediate. Clearing those inputs requires a stable inactive reading for `DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS`, currently 50 ms. This prevents contact bounce from re-enabling motion while preserving fail-safe stop behavior.
-
-Manual UP/DOWN/CALIBRATE buttons pass through the app input filter. Manual movement debounce is handled by the domain controller so hold-to-run behavior remains deterministic in host tests.
+An interval above 50 ms, clock rollback, read/write failure, Hall failure, or
+watchdog service failure becomes a latched hardware/control error.
 
 ## State Machine
 
-Phase 1 states:
+- `SAFE_START`: STOP until controls are released and safety inputs remain valid
+  for 500 ms. A held boot button cannot start movement.
+- `IDLE`: STOP, waiting for a debounced hold-to-run request.
+- `MOVING_UP` / `MOVING_DOWN`: independent axis output, Hall checks, soft start,
+  synchronization trim, limits, and alignment timeout.
+- `CALIBRATING_DOWN`: explicit 2 second CALIBRATE hold; each axis stops at its
+  lower limit and Hall counters are zeroed only after all three arrive.
+- `ERROR`: latched STOP. Hold CALIBRATE for 2 seconds and release with all inputs
+  healthy to return to `SAFE_START`.
 
-- `DESK_STATE_IDLE`
-- `DESK_STATE_MOVING_UP`
-- `DESK_STATE_MOVING_DOWN`
-- `DESK_STATE_CALIBRATING_DOWN`
-- `DESK_STATE_ERROR`
+CALIBRATE release aborts calibration. UP plus DOWN, E-stop, limit conflict,
+feedback faults, invalid transition, loop overrun, and hardware failures latch
+`ERROR`.
 
-All states command stopped motors unless there is an explicit, currently valid manual or calibration request.
+## Motor Boundary
 
-`DESK_STATE_ERROR` latches motion inhibited. Phase 1 clears errors only through `desk_controller_request_clear_error()` or reboot. Clearing an error does not itself command motion.
+`motor_axis.c` validates individual commands and complete output vectors. It
+checks state/error coherence, duty range, STOP de-energization, and direction
+compatibility. `esp_gpio_hal_apply_outputs()` validates all three commands before
+applying any axis. A later driver error triggers best-effort STOP on every axis.
 
-Manual UP/DOWN requests are debounced in the controller before motion starts. Stop, emergency, both-buttons, and limit safety paths are not delayed by debounce.
+The BTS7960 sequence is:
 
-Calibration starts only from idle and only when neither UP nor DOWN is pressed. Ambiguous calibration requests enter `DESK_STATE_ERROR` with `DESK_ERROR_INVALID_TRANSITION`.
+1. Enable LOW.
+2. RPWM and LPWM duty zero.
+3. Inactive direction duty zero.
+4. Active direction duty set.
+5. Enable HIGH.
 
-Alignment timeout and calibration timeout are separate domain errors so logs can distinguish side mismatch from a calibration routine that never reached both lower limits.
+Domain dead time is 300 ms. The driver also forces STOP whenever its applied
+direction changes, but does not replace domain timing.
 
-Direction reversal is detected before manual debounce. The old direction stops immediately and the configured dead-time starts at the reversal request; debounce applies to starting ordinary manual movement, not to delaying a safety stop.
+## Hall Feedback
 
-## HAL Boundaries
+Each quadrature pair uses one ESP-IDF PCNT unit with a 1 us glitch filter,
+accumulated count, and watch points at +/-30000. Counts are sampled in the
+control task; no application ISR or unbounded callback exists.
 
-- `main/domain/*`: pure C state machine and motor output safety helpers.
-- `main/app/desk_input_filter.*`: host-testable input conditioning for safety signals.
-- `main/hal/*`: small platform-independent interface types.
-- `main/platform/*`: ESP-IDF GPIO, timing, and BTS7960 implementation.
-- `tests/fake_gpio.*` and `tests/fake_time.*`: host-side fakes for future app-level tests.
+During motion the domain checks:
 
-The domain layer has no direct `gpio_*`, `vTaskDelay`, or ESP-IDF dependency.
+- all three sources valid;
+- count movement agrees with commanded direction;
+- each enabled motor changes count before the stall timeout;
+- global spread remains below the hard threshold;
+- leading axes receive a configurable PWM reduction at the warning threshold.
 
-Build warning policy is intentionally strict. Host tests and the ESP-IDF main component treat common warnings as errors.
-
-## Output Safety Helpers
-
-`main/domain/motor_axis.*` owns the pure mapping from logical motor commands to BTS7960 RPWM/LPWM/enable outputs. The helper distinguishes basic safety from stricter coherence:
-
-- Safe output never drives RPWM and LPWM together.
-- Coherent output also requires STOP to de-energize every output and motion commands to assert enable with exactly one direction.
-
-The platform BTS7960 driver checks command validity and output coherence before touching GPIO. Invalid or incoherent output fails safe to STOP.
+Counts are relative and become zero only after successful lower calibration.
+No preset or absolute automatic positioning is implemented.
 
 ## Extension Points
 
-Future features may add position sensors, display, persistent presets, or connectivity, but those features must enter through application services that call the domain API. They must not bypass safety logic or directly command GPIO outputs.
-
-## Phase 2 Feedback Extension
-
-`main/domain/desk_feedback.*` defines normalized feedback inputs and diagnostics without selecting hardware. It can report feedback OK, missing, or faulted, including left/right axis disagreement beyond a configured threshold.
-
-`main/hal/desk_feedback_source.h` defines the small provider interface future platform drivers can implement. Tests use `tests/fake_feedback.*` so feedback behavior can be exercised on the host before ESP32 sensor drivers exist.
-
-The feedback monitor adds temporal plausibility checks between valid samples. A missing or faulted sample resets monitor history, and an implausible position step is reported as a feedback fault rather than being smoothed or corrected.
-
-`main/app/desk_feedback_observer.*` wraps a feedback source and the domain monitor for app-level polling. It is host-tested with the fake provider and is ready for future platform sensor drivers, but it is not connected to motor command decisions.
-
-`main/platform/feedback_none_source.*` is the current runtime source. It reports feedback missing until real sensor hardware is selected and implemented. The app loop polls the observer and logs feedback diagnostic changes only.
-
-Feedback is observational at this stage. It is not connected to motor command decisions, automatic positioning, or calibration behavior.
+Future command sources submit semantic requests above `desk_app`; they cannot
+receive motor/GPIO handles. Presets need a separate position-command service and
+NVS adapter. WiFi/BLE need bounded queues into the application layer, with local
+safety retaining final authority.
