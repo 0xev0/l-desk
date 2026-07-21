@@ -6,6 +6,7 @@ static desk_inputs_t fail_safe_inputs(void)
 {
     desk_inputs_t inputs = {
         .emergency_active = true,
+        .hardware_fault = true,
     };
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         inputs.axis[axis].upper_limit_active = true;
@@ -59,6 +60,7 @@ desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter,
     filter->stable_inputs.up_pressed = raw_inputs->up_pressed;
     filter->stable_inputs.down_pressed = raw_inputs->down_pressed;
     filter->stable_inputs.calibrate_pressed = raw_inputs->calibrate_pressed;
+    filter->stable_inputs.hardware_fault = raw_inputs->hardware_fault;
     update_immediate_active_debounced_release(raw_inputs->emergency_active,
                                                &filter->stable_inputs.emergency_active,
                                                &filter->emergency_release_elapsed_ms,

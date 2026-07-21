@@ -32,6 +32,7 @@ typedef struct {
     bool calibrate_timing;
     bool alignment_active;
     bool motion_was_active;
+    bool feedback_warning;
 } desk_controller_t;
 
 void desk_controller_init(desk_controller_t *controller, const desk_config_t *config);
@@ -41,3 +42,4 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller,
 bool desk_controller_request_clear_error(desk_controller_t *controller,
                                          const desk_inputs_t *inputs,
                                          uint64_t now_ms);
+void desk_controller_report_hardware_fault(desk_controller_t *controller, uint64_t now_ms);

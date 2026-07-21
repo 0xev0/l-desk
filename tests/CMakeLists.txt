@@ -17,16 +17,6 @@ add_compile_options(
 
 enable_testing()
 
-add_library(fake_hal STATIC
-    fake_gpio.c
-    fake_time.c
-)
-target_include_directories(fake_hal PRIVATE
-    .
-    ../main/domain
-    ../main/hal
-)
-
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c
@@ -117,3 +107,30 @@ target_include_directories(test_desk_input_filter PRIVATE
 )
 
 add_test(NAME test_desk_input_filter COMMAND test_desk_input_filter)
+
+add_executable(test_desk_app
+    test_desk_app.c
+    fake_platform.c
+    ../main/app/desk_app.c
+    ../main/app/desk_input_filter.c
+    ../main/domain/desk_controller.c
+)
+target_include_directories(test_desk_app PRIVATE
+    .
+    ../main/app
+    ../main/domain
+    ../main/hal
+)
+
+add_test(NAME test_desk_app COMMAND test_desk_app)
+
+add_executable(test_safety_properties
+    test_safety_properties.c
+    ../main/domain/desk_controller.c
+    ../main/domain/motor_axis.c
+)
+target_include_directories(test_safety_properties PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_safety_properties COMMAND test_safety_properties)

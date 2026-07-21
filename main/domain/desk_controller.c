@@ -63,6 +63,7 @@ static desk_outputs_t current_outputs(const desk_controller_t *controller)
     desk_outputs_t outputs = {
         .state = controller->state,
         .error = controller->error,
+        .feedback_warning = controller->feedback_warning,
     };
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
@@ -241,7 +242,7 @@ static bool validate_previous_feedback(desk_controller_t *controller,
                                        const desk_inputs_t *inputs,
                                        uint64_t now_ms)
 {
-    if (!controller->motion_was_active) {
+    if (!controller->config.feedback_required || !controller->motion_was_active) {
         return true;
     }
 
@@ -249,7 +250,7 @@ static bool validate_previous_feedback(desk_controller_t *controller,
         if (!controller->motor[axis].enable) {
             continue;
         }
-        if (controller->config.feedback_required && !inputs->axis[axis].hall_valid) {
+        if (!inputs->axis[axis].hall_valid) {
             enter_error(controller, DESK_ERROR_FEEDBACK_MISSING, now_ms);
             return false;
         }
@@ -329,6 +330,7 @@ static bool apply_feedback_synchronization(desk_controller_t *controller,
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         duty[axis] = base_duty;
     }
+    controller->feedback_warning = false;
 
     if (!controller->config.feedback_required) {
         return true;
@@ -348,6 +350,8 @@ static bool apply_feedback_synchronization(desk_controller_t *controller,
     if (spread < (uint32_t)controller->config.feedback_warning_counts) {
         return true;
     }
+
+    controller->feedback_warning = true;
 
     uint16_t trim = controller->config.synchronization_trim_permille;
     uint16_t reduced = base_duty > trim ? (uint16_t)(base_duty - trim) : 1U;
@@ -507,6 +511,10 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller,
         stop_all(controller, now_ms);
         return current_outputs(controller);
     }
+    if (inputs->hardware_fault) {
+        enter_error(controller, DESK_ERROR_HARDWARE_FAULT, now_ms);
+        return current_outputs(controller);
+    }
     if (inputs->emergency_active) {
         enter_error(controller, DESK_ERROR_EMERGENCY_STOP, now_ms);
         return current_outputs(controller);
@@ -622,4 +630,11 @@ bool desk_controller_request_clear_error(desk_controller_t *controller,
     reset_button_debounce(controller);
     reset_alignment(controller);
     return true;
+}
+
+void desk_controller_report_hardware_fault(desk_controller_t *controller, uint64_t now_ms)
+{
+    if (controller != NULL) {
+        enter_error(controller, DESK_ERROR_HARDWARE_FAULT, now_ms);
+    }
 }

@@ -78,6 +78,24 @@ static void feedback_stall_times_out(void)
     TEST_ASSERT_EQUAL_INT(DESK_ERROR_FEEDBACK_STALL, rig.outputs.error);
 }
 
+static void feedback_warning_trims_only_the_leading_axis(void)
+{
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    config.soft_start_ms = 0U;
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.axis[DESK_AXIS_FRONT_LEFT].hall_count = config.feedback_warning_counts;
+    rig.inputs.up_pressed = true;
+    controller_debounce_button(&rig);
+
+    TEST_ASSERT_TRUE(rig.outputs.feedback_warning);
+    TEST_ASSERT_TRUE(rig.outputs.motor[DESK_AXIS_FRONT_LEFT].duty_permille <
+                     rig.outputs.motor[DESK_AXIS_FRONT_RIGHT].duty_permille);
+    TEST_ASSERT_EQUAL_INT(rig.outputs.motor[DESK_AXIS_FRONT_RIGHT].duty_permille,
+                          rig.outputs.motor[DESK_AXIS_WING].duty_permille);
+}
+
 int main(void)
 {
     invalid_arguments_fail_stopped();
@@ -86,5 +104,6 @@ int main(void)
     feedback_faults_stop_all_axes();
     feedback_direction_and_skew_are_checked();
     feedback_stall_times_out();
+    feedback_warning_trims_only_the_leading_axis();
     return 0;
 }

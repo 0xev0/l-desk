@@ -55,6 +55,7 @@ typedef struct {
     bool down_pressed;
     bool calibrate_pressed;
     bool emergency_active;
+    bool hardware_fault;
 } desk_inputs_t;
 
 typedef struct {

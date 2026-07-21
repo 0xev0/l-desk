@@ -1,168 +1,136 @@
 #include "desk_app.h"
 
-#include "desk_config.h"
-#include "desk_controller.h"
-#include "desk_feedback_observer.h"
-#include "desk_input_filter.h"
-#include "esp_gpio_hal.h"
-#include "esp_log.h"
-#include "esp_time_hal.h"
-#include "feedback_none_source.h"
-
-static const char *const TAG = "desk_app";
+#include <limits.h>
+#include <stddef.h>
 
 #define DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS 50U
-#define DESK_FEEDBACK_MAX_AXIS_DELTA_UNITS 10
-#define DESK_FEEDBACK_MAX_POSITION_STEP_UNITS 20
 
-static const char *state_name(desk_state_t state)
+static desk_outputs_t stopped_fault_outputs(void)
 {
-    switch (state) {
-    case DESK_STATE_IDLE:
-        return "IDLE";
-    case DESK_STATE_MOVING_UP:
-        return "MOVING_UP";
-    case DESK_STATE_MOVING_DOWN:
-        return "MOVING_DOWN";
-    case DESK_STATE_CALIBRATING_DOWN:
-        return "CALIBRATING_DOWN";
-    case DESK_STATE_ERROR:
-        return "ERROR";
-    default:
-        return "UNKNOWN";
+    desk_outputs_t outputs = {
+        .state = DESK_STATE_ERROR,
+        .error = DESK_ERROR_HARDWARE_FAULT,
+    };
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis].direction = MOTOR_COMMAND_STOP;
     }
+    return outputs;
 }
 
-static const char *error_name(desk_error_t error)
+static bool platform_is_complete(const desk_platform_t *platform)
 {
-    switch (error) {
-    case DESK_ERROR_NONE:
-        return "NONE";
-    case DESK_ERROR_EMERGENCY_STOP:
-        return "EMERGENCY_STOP";
-    case DESK_ERROR_BOTH_BUTTONS_PRESSED:
-        return "BOTH_BUTTONS_PRESSED";
-    case DESK_ERROR_ALIGNMENT_TIMEOUT:
-        return "ALIGNMENT_TIMEOUT";
-    case DESK_ERROR_CALIBRATION_TIMEOUT:
-        return "CALIBRATION_TIMEOUT";
-    case DESK_ERROR_LIMIT_CONFLICT:
-        return "LIMIT_CONFLICT";
-    case DESK_ERROR_INVALID_TRANSITION:
-        return "INVALID_TRANSITION";
-    case DESK_ERROR_HARDWARE_FAULT:
-        return "HARDWARE_FAULT";
-    default:
-        return "UNKNOWN";
-    }
+    return platform != NULL && platform->initialize != NULL && platform->read_inputs != NULL &&
+           platform->apply_outputs != NULL && platform->zero_hall_counts != NULL &&
+           platform->service_watchdog != NULL && platform->now_ms != NULL &&
+           platform->delay_ms != NULL;
 }
 
-static const char *feedback_status_name(desk_feedback_diagnostic_status_t status)
+static void update_clear_error_request(desk_app_t *app,
+                                       const desk_inputs_t *inputs,
+                                       uint64_t now_ms)
 {
-    switch (status) {
-    case DESK_FEEDBACK_DIAGNOSTIC_OK:
-        return "OK";
-    case DESK_FEEDBACK_DIAGNOSTIC_MISSING:
-        return "MISSING";
-    case DESK_FEEDBACK_DIAGNOSTIC_FAULT:
-        return "FAULT";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-static const char *feedback_error_name(desk_feedback_error_t error)
-{
-    switch (error) {
-    case DESK_FEEDBACK_ERROR_NONE:
-        return "NONE";
-    case DESK_FEEDBACK_ERROR_MISSING:
-        return "MISSING";
-    case DESK_FEEDBACK_ERROR_AXIS_FAULT:
-        return "AXIS_FAULT";
-    case DESK_FEEDBACK_ERROR_AXIS_DISAGREEMENT:
-        return "AXIS_DISAGREEMENT";
-    case DESK_FEEDBACK_ERROR_POSITION_JUMP:
-        return "POSITION_JUMP";
-    case DESK_FEEDBACK_ERROR_INVALID_INPUT:
-        return "INVALID_INPUT";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-static void log_state_change(const desk_outputs_t *outputs)
-{
-    if (outputs == NULL) {
+    if (app->controller.state != DESK_STATE_ERROR) {
+        app->clear_error_timing = false;
+        app->clear_error_armed = false;
         return;
     }
 
-    ESP_LOGI(TAG, "state=%s error=%s left=%d right=%d",
-             state_name(outputs->state),
-             error_name(outputs->error),
-             (int)outputs->left_motor,
-             (int)outputs->right_motor);
-}
-
-static void log_feedback_change(const desk_feedback_diagnostics_t *diagnostics)
-{
-    if (diagnostics == NULL) {
+    bool unsafe_control = inputs->up_pressed || inputs->down_pressed ||
+                          inputs->emergency_active || inputs->hardware_fault;
+    if (unsafe_control) {
+        app->clear_error_timing = false;
+        app->clear_error_armed = false;
         return;
     }
 
-    ESP_LOGI(TAG, "feedback=%s error=%s",
-             feedback_status_name(diagnostics->status),
-             feedback_error_name(diagnostics->error));
+    if (inputs->calibrate_pressed) {
+        if (!app->clear_error_timing) {
+            app->clear_error_timing = true;
+            app->clear_error_pressed_since_ms = now_ms;
+        } else if (now_ms >= app->clear_error_pressed_since_ms &&
+                   now_ms - app->clear_error_pressed_since_ms >=
+                       app->controller.config.calibrate_hold_ms) {
+            app->clear_error_armed = true;
+        }
+        return;
+    }
+
+    if (app->clear_error_armed) {
+        (void)desk_controller_request_clear_error(&app->controller, inputs, now_ms);
+    }
+    app->clear_error_timing = false;
+    app->clear_error_armed = false;
 }
 
-void desk_app_run(void)
+bool desk_app_init(desk_app_t *app,
+                   const desk_platform_t *platform,
+                   const desk_config_t *config)
 {
-    ESP_LOGI(TAG, "booting motorized desk controller");
-    esp_gpio_hal_init();
-
-    desk_controller_t controller;
-    desk_config_t config = desk_config_default();
-    desk_controller_init(&controller, &config);
-
-    desk_input_filter_t input_filter;
-    desk_input_filter_init(&input_filter, DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS);
-
-    desk_feedback_config_t feedback_config = {
-        .max_axis_delta_units = DESK_FEEDBACK_MAX_AXIS_DELTA_UNITS,
-        .max_position_step_units = DESK_FEEDBACK_MAX_POSITION_STEP_UNITS,
-    };
-    desk_feedback_observer_t feedback_observer;
-    desk_feedback_observer_init(&feedback_observer, feedback_none_source(), feedback_config);
-
-    desk_outputs_t last_outputs = {
-        .left_motor = MOTOR_COMMAND_STOP,
-        .right_motor = MOTOR_COMMAND_STOP,
-        .state = DESK_STATE_IDLE,
-        .error = DESK_ERROR_NONE,
-    };
-    desk_feedback_diagnostics_t last_feedback = {
-        .status = DESK_FEEDBACK_DIAGNOSTIC_OK,
-        .error = DESK_FEEDBACK_ERROR_NONE,
-        .feedback_ok = true,
-    };
-
-    while (true) {
-        desk_inputs_t raw_inputs = esp_gpio_hal_read_inputs();
-        desk_inputs_t inputs = desk_input_filter_update(&input_filter, &raw_inputs, config.control_tick_ms);
-        desk_feedback_diagnostics_t feedback = desk_feedback_observer_poll(&feedback_observer);
-        desk_outputs_t outputs = desk_controller_tick(&controller, &inputs, config.control_tick_ms);
-        esp_gpio_hal_apply_outputs(&outputs);
-
-        if (outputs.state != last_outputs.state || outputs.error != last_outputs.error) {
-            log_state_change(&outputs);
-        }
-
-        if (desk_feedback_diagnostics_changed(&last_feedback, &feedback)) {
-            log_feedback_change(&feedback);
-        }
-
-        last_outputs = outputs;
-        last_feedback = feedback;
-        desk_time_delay_ms(config.control_tick_ms);
+    if (app == NULL || !platform_is_complete(platform)) {
+        return false;
     }
+
+    *app = (desk_app_t){
+        .platform = *platform,
+        .last_outputs = stopped_fault_outputs(),
+    };
+    if (!app->platform.initialize(app->platform.context)) {
+        return false;
+    }
+
+    desk_controller_init(&app->controller, config);
+    desk_input_filter_init(&app->input_filter, DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS);
+    app->last_step_ms = app->platform.now_ms(app->platform.context);
+    app->last_outputs.state = DESK_STATE_SAFE_START;
+    app->last_outputs.error = DESK_ERROR_NONE;
+    app->initialized = true;
+    return true;
+}
+
+desk_outputs_t desk_app_step(desk_app_t *app)
+{
+    if (app == NULL || !app->initialized) {
+        return stopped_fault_outputs();
+    }
+
+    uint64_t now_ms = app->platform.now_ms(app->platform.context);
+    uint64_t elapsed = now_ms >= app->last_step_ms ? now_ms - app->last_step_ms : UINT64_MAX;
+    uint32_t filter_elapsed = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
+    app->last_step_ms = now_ms;
+
+    desk_inputs_t raw_inputs = {0};
+    if (!app->platform.read_inputs(app->platform.context, &raw_inputs)) {
+        raw_inputs.hardware_fault = true;
+    }
+    desk_inputs_t inputs = desk_input_filter_update(&app->input_filter,
+                                                     &raw_inputs,
+                                                     filter_elapsed);
+    update_clear_error_request(app, &inputs, now_ms);
+    desk_outputs_t outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
+
+    bool calibration_completed = app->last_outputs.state == DESK_STATE_CALIBRATING_DOWN &&
+                                 outputs.state == DESK_STATE_IDLE &&
+                                 outputs.error == DESK_ERROR_NONE;
+    if (calibration_completed && !app->platform.zero_hall_counts(app->platform.context)) {
+        desk_controller_report_hardware_fault(&app->controller, now_ms);
+        outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
+    }
+
+    if (!app->platform.apply_outputs(app->platform.context, &outputs)) {
+        desk_controller_report_hardware_fault(&app->controller, now_ms);
+        outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
+        (void)app->platform.apply_outputs(app->platform.context, &outputs);
+    } else if (!app->platform.service_watchdog(app->platform.context)) {
+        desk_controller_report_hardware_fault(&app->controller, now_ms);
+        outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
+        (void)app->platform.apply_outputs(app->platform.context, &outputs);
+    }
+
+    if (app->platform.log_transition != NULL &&
+        (outputs.state != app->last_outputs.state || outputs.error != app->last_outputs.error ||
+         outputs.feedback_warning != app->last_outputs.feedback_warning)) {
+        app->platform.log_transition(app->platform.context, &app->last_outputs, &outputs);
+    }
+    app->last_outputs = outputs;
+    return outputs;
 }

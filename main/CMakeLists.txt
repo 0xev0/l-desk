@@ -2,10 +2,12 @@ idf_component_register(
     SRCS
         "app_main.c"
         "app/desk_app.c"
+        "app/desk_app_runtime.c"
         "app/desk_input_filter.c"
         "domain/desk_controller.c"
         "domain/motor_axis.c"
         "platform/bts7960_driver.c"
+        "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
         "platform/esp_hall_hal.c"
         "platform/esp_time_hal.c"
@@ -15,9 +17,13 @@ idf_component_register(
         "domain"
         "hal"
         "platform"
+    REQUIRES
+        esp_driver_gpio
+        esp_driver_ledc
+        esp_driver_pcnt
+        esp_timer
+        esp_system
 )
-
-target_link_libraries(${COMPONENT_LIB} PRIVATE idf::esp_driver_ledc idf::esp_driver_pcnt)
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -Wall

@@ -4,17 +4,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-uint32_t desk_time_get_ms(void)
+uint64_t esp_time_hal_now_ms(void)
 {
     int64_t now_us = esp_timer_get_time();
-    if (now_us <= 0) {
-        return 0;
-    }
-
-    return (uint32_t)(now_us / 1000);
+    return now_us > 0 ? (uint64_t)now_us / 1000U : 0U;
 }
 
-void desk_time_delay_ms(uint32_t delay_ms)
+void esp_time_hal_delay_ms(uint32_t delay_ms)
 {
     vTaskDelay(pdMS_TO_TICKS(delay_ms));
 }
