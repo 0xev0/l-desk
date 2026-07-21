@@ -13,7 +13,27 @@ add_compile_options(
     -Wpedantic
     -Wformat=2
     -Wshadow
+    -Wconversion
+    -Wsign-conversion
+    -Wswitch-enum
+    -Wundef
 )
+
+option(DESK_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(DESK_ENABLE_COVERAGE "Enable Clang source coverage instrumentation" OFF)
+
+if(DESK_ENABLE_SANITIZERS)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
+if(DESK_ENABLE_COVERAGE)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "DESK_ENABLE_COVERAGE requires Clang")
+    endif()
+    add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
+    add_link_options(-fprofile-instr-generate)
+endif()
 
 enable_testing()
 

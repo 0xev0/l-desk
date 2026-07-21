@@ -170,6 +170,25 @@ static bool is_direction_reversal(motor_command_t previous, motor_command_t requ
            (previous == MOTOR_COMMAND_DOWN && requested == MOTOR_COMMAND_UP);
 }
 
+static bool config_is_valid(const desk_config_t *config)
+{
+    return config->control_tick_ms > 0U &&
+           config->max_control_interval_ms >= config->control_tick_ms &&
+           config->alignment_timeout_ms > 0U && config->calibration_timeout_ms > 0U &&
+           (!config->feedback_required || config->feedback_stall_timeout_ms > 0U) &&
+           config->feedback_warning_counts >= 0 &&
+           config->feedback_stop_counts > config->feedback_warning_counts &&
+           config->maximum_duty_permille > 0U && config->maximum_duty_permille <= 1000U &&
+           config->starting_duty_permille > 0U &&
+           config->starting_duty_permille <= config->maximum_duty_permille &&
+           config->synchronization_trim_permille < config->maximum_duty_permille;
+}
+
+static uint64_t saturating_deadline(uint64_t now_ms, uint32_t delay_ms)
+{
+    return UINT64_MAX - now_ms < delay_ms ? UINT64_MAX : now_ms + delay_ms;
+}
+
 static motor_command_t debounce_direction(desk_controller_t *controller,
                                           motor_command_t requested,
                                           uint64_t now_ms)
@@ -484,8 +503,9 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
         return;
     }
 
+    desk_config_t resolved_config = config != NULL ? *config : desk_config_default();
     *controller = (desk_controller_t){
-        .config = config != NULL ? *config : desk_config_default(),
+        .config = resolved_config,
         .state = DESK_STATE_SAFE_START,
         .error = DESK_ERROR_NONE,
         .last_motion_direction = MOTOR_COMMAND_STOP,
@@ -494,6 +514,10 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
     };
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         controller->motor[axis] = stopped_axis();
+    }
+    if (!config_is_valid(&resolved_config)) {
+        controller->state = DESK_STATE_ERROR;
+        controller->error = DESK_ERROR_HARDWARE_FAULT;
     }
 }
 
@@ -581,14 +605,16 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller,
         if (any_motor_enabled(controller)) {
             stop_all(controller, now_ms);
             controller->pending_direction = raw_requested;
-            controller->deadtime_until_ms = now_ms + controller->config.direction_change_deadtime_ms;
+            controller->deadtime_until_ms = saturating_deadline(
+                now_ms,
+                controller->config.direction_change_deadtime_ms);
         } else if (controller->pending_direction != raw_requested) {
             controller->pending_direction = raw_requested;
             uint64_t elapsed_stopped = now_ms - controller->direction_stopped_at_ms;
             uint64_t remaining = elapsed_stopped >= controller->config.direction_change_deadtime_ms
                                      ? 0U
                                      : controller->config.direction_change_deadtime_ms - elapsed_stopped;
-            controller->deadtime_until_ms = now_ms + remaining;
+            controller->deadtime_until_ms = saturating_deadline(now_ms, (uint32_t)remaining);
         }
 
         if (now_ms < controller->deadtime_until_ms) {

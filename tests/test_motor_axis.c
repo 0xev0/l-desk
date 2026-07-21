@@ -48,9 +48,34 @@ static void invalid_commands_fail_safe(void)
     TEST_ASSERT_FALSE(motor_axis_command_is_valid(NULL));
 }
 
+static void complete_output_vector_is_checked_before_hardware(void)
+{
+    desk_outputs_t outputs = {
+        .state = DESK_STATE_MOVING_UP,
+        .error = DESK_ERROR_NONE,
+    };
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = command(MOTOR_COMMAND_UP, 500U, true);
+    }
+    TEST_ASSERT_TRUE(desk_outputs_are_coherent(&outputs));
+
+    outputs.motor[DESK_AXIS_WING] = command(MOTOR_COMMAND_DOWN, 500U, true);
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(&outputs));
+    outputs.state = DESK_STATE_ERROR;
+    outputs.error = DESK_ERROR_HARDWARE_FAULT;
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(&outputs));
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = command(MOTOR_COMMAND_STOP, 0U, false);
+    }
+    TEST_ASSERT_TRUE(desk_outputs_are_coherent(&outputs));
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(NULL));
+}
+
 int main(void)
 {
     valid_commands_map_to_safe_outputs();
     invalid_commands_fail_safe();
+    complete_output_vector_is_checked_before_hardware();
     return 0;
 }

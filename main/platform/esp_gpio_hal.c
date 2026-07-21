@@ -4,6 +4,7 @@
 
 #include "board_config.h"
 #include "driver/gpio.h"
+#include "motor_axis.h"
 
 static const int upper_limit_pins[DESK_AXIS_COUNT] = {
     PIN_AXIS_FRONT_LEFT_LIMIT_UP,
@@ -146,6 +147,10 @@ esp_err_t esp_gpio_hal_apply_outputs(esp_gpio_hal_t *hal, const desk_outputs_t *
             (void)esp_gpio_hal_stop_all(hal);
         }
         return ESP_ERR_INVALID_STATE;
+    }
+    if (!desk_outputs_are_coherent(outputs)) {
+        (void)esp_gpio_hal_stop_all(hal);
+        return ESP_ERR_INVALID_ARG;
     }
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {

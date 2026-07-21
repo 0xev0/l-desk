@@ -6,7 +6,8 @@
 
 #define TEST_ASSERT_TRUE(value) test_assert_true((value), #value, __FILE__, __LINE__)
 #define TEST_ASSERT_FALSE(value) test_assert_false((value), #value, __FILE__, __LINE__)
-#define TEST_ASSERT_EQUAL_INT(expected, actual) test_assert_equal_int((expected), (actual), #actual, __FILE__, __LINE__)
+#define TEST_ASSERT_EQUAL_INT(expected, actual) \
+    test_assert_equal_int((int)(expected), (int)(actual), #actual, __FILE__, __LINE__)
 
 static inline void test_assert_true(bool value, const char *expression, const char *file, int line)
 {

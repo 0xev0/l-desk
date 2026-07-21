@@ -63,6 +63,16 @@ static void delay_ms(void *context, uint32_t delay)
     }
 }
 
+static void log_transition(void *context,
+                           const desk_outputs_t *previous,
+                           const desk_outputs_t *current)
+{
+    fake_platform_t *fake = context;
+    if (fake != NULL && previous != NULL && current != NULL) {
+        ++fake->log_calls;
+    }
+}
+
 void fake_platform_reset(fake_platform_t *fake)
 {
     if (fake == NULL) {
@@ -84,6 +94,7 @@ desk_platform_t fake_platform_interface(fake_platform_t *fake)
         .service_watchdog = service_watchdog,
         .now_ms = now_ms,
         .delay_ms = delay_ms,
+        .log_transition = log_transition,
         .context = fake,
     };
 }

@@ -1,5 +1,6 @@
 build/
 build-host/
+build-*/
 build_esp32s3/
 build_s3/
 tests/build/

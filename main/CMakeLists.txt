@@ -31,4 +31,7 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
     -Werror
     -Wformat=2
     -Wshadow
+    -Wconversion
+    -Wsign-conversion
+    -Wswitch-enum
 )

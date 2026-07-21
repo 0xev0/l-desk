@@ -9,6 +9,7 @@ typedef struct {
     unsigned initialize_calls;
     unsigned apply_calls;
     unsigned zero_calls;
+    unsigned log_calls;
     bool fail_initialize;
     bool fail_read;
     bool fail_apply;

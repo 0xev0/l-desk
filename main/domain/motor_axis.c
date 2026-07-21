@@ -49,3 +49,37 @@ bool motor_axis_output_is_coherent(const motor_axis_output_t *output)
 
     return output->enable_active && output->duty_permille > 0U;
 }
+
+bool desk_outputs_are_coherent(const desk_outputs_t *outputs)
+{
+    if (outputs == NULL || outputs->state > DESK_STATE_ERROR) {
+        return false;
+    }
+    if ((outputs->state == DESK_STATE_ERROR) != (outputs->error != DESK_ERROR_NONE)) {
+        return false;
+    }
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        const desk_axis_output_t *motor = &outputs->motor[axis];
+        if (!motor_axis_command_is_valid(motor)) {
+            return false;
+        }
+
+        bool stopped_state = outputs->state == DESK_STATE_SAFE_START ||
+                             outputs->state == DESK_STATE_IDLE ||
+                             outputs->state == DESK_STATE_ERROR;
+        if (stopped_state && motor->direction != MOTOR_COMMAND_STOP) {
+            return false;
+        }
+        if (outputs->state == DESK_STATE_MOVING_UP &&
+            motor->direction == MOTOR_COMMAND_DOWN) {
+            return false;
+        }
+        if ((outputs->state == DESK_STATE_MOVING_DOWN ||
+             outputs->state == DESK_STATE_CALIBRATING_DOWN) &&
+            motor->direction == MOTOR_COMMAND_UP) {
+            return false;
+        }
+    }
+    return true;
+}

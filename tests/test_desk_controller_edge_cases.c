@@ -6,6 +6,14 @@ static void invalid_arguments_fail_stopped(void)
     TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
     TEST_ASSERT_EQUAL_INT(DESK_ERROR_HARDWARE_FAULT, outputs.error);
     assert_all_stopped(outputs);
+
+    desk_controller_t controller;
+    desk_config_t invalid_config = desk_config_default();
+    invalid_config.maximum_duty_permille = 1001U;
+    desk_controller_init(&controller, &invalid_config);
+    outputs = desk_controller_tick(&controller, &(desk_inputs_t){0}, 0U);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_HARDWARE_FAULT, outputs.error);
+    assert_all_stopped(outputs);
 }
 
 static void control_loop_overrun_is_latched(void)
