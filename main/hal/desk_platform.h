@@ -13,8 +13,7 @@ typedef struct {
     bool (*service_watchdog)(void *context);
     uint64_t (*now_ms)(void *context);
     void (*delay_ms)(void *context, uint32_t delay_ms);
-    void (*log_transition)(void *context,
-                           const desk_outputs_t *previous,
+    void (*log_transition)(void *context, const desk_outputs_t *previous,
                            const desk_outputs_t *current);
     void *context;
 } desk_platform_t;

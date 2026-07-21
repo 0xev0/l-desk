@@ -19,8 +19,6 @@ typedef struct {
     bool initialized;
 } desk_app_t;
 
-bool desk_app_init(desk_app_t *app,
-                   const desk_platform_t *platform,
-                   const desk_config_t *config);
+bool desk_app_init(desk_app_t *app, const desk_platform_t *platform, const desk_config_t *config);
 desk_outputs_t desk_app_step(desk_app_t *app);
 void desk_app_run(void);

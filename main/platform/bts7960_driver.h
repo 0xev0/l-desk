@@ -18,6 +18,5 @@ typedef struct {
 } bts7960_driver_t;
 
 esp_err_t bts7960_driver_init(bts7960_driver_t *driver);
-esp_err_t bts7960_driver_apply(bts7960_driver_t *driver,
-                               const desk_axis_output_t *command);
+esp_err_t bts7960_driver_apply(bts7960_driver_t *driver, const desk_axis_output_t *command);
 esp_err_t bts7960_driver_stop(bts7960_driver_t *driver);

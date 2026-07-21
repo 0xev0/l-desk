@@ -25,8 +25,7 @@ static bool platform_is_complete(const desk_platform_t *platform)
            platform->delay_ms != NULL;
 }
 
-static void update_clear_error_request(desk_app_t *app,
-                                       const desk_inputs_t *inputs,
+static void update_clear_error_request(desk_app_t *app, const desk_inputs_t *inputs,
                                        uint64_t now_ms)
 {
     if (app->controller.state != DESK_STATE_ERROR) {
@@ -35,8 +34,8 @@ static void update_clear_error_request(desk_app_t *app,
         return;
     }
 
-    bool unsafe_control = inputs->up_pressed || inputs->down_pressed ||
-                          inputs->emergency_active || inputs->hardware_fault;
+    bool unsafe_control = inputs->up_pressed || inputs->down_pressed || inputs->emergency_active ||
+                          inputs->hardware_fault;
     if (unsafe_control) {
         app->clear_error_timing = false;
         app->clear_error_armed = false;
@@ -62,9 +61,7 @@ static void update_clear_error_request(desk_app_t *app,
     app->clear_error_armed = false;
 }
 
-bool desk_app_init(desk_app_t *app,
-                   const desk_platform_t *platform,
-                   const desk_config_t *config)
+bool desk_app_init(desk_app_t *app, const desk_platform_t *platform, const desk_config_t *config)
 {
     if (app == NULL || !platform_is_complete(platform)) {
         return false;
@@ -102,9 +99,8 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     if (!app->platform.read_inputs(app->platform.context, &raw_inputs)) {
         raw_inputs.hardware_fault = true;
     }
-    desk_inputs_t inputs = desk_input_filter_update(&app->input_filter,
-                                                     &raw_inputs,
-                                                     filter_elapsed);
+    desk_inputs_t inputs =
+        desk_input_filter_update(&app->input_filter, &raw_inputs, filter_elapsed);
     update_clear_error_request(app, &inputs, now_ms);
     desk_outputs_t outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
 
@@ -116,11 +112,11 @@ desk_outputs_t desk_app_step(desk_app_t *app)
         outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
     }
 
-    if (!app->platform.apply_outputs(app->platform.context, &outputs)) {
-        desk_controller_report_hardware_fault(&app->controller, now_ms);
-        outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
-        (void)app->platform.apply_outputs(app->platform.context, &outputs);
-    } else if (!app->platform.service_watchdog(app->platform.context)) {
+    bool platform_fault = !app->platform.apply_outputs(app->platform.context, &outputs);
+    if (!platform_fault) {
+        platform_fault = !app->platform.service_watchdog(app->platform.context);
+    }
+    if (platform_fault) {
         desk_controller_report_hardware_fault(&app->controller, now_ms);
         outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
         (void)app->platform.apply_outputs(app->platform.context, &outputs);

@@ -63,8 +63,7 @@ static void delay_ms(void *context, uint32_t delay)
     }
 }
 
-static void log_transition(void *context,
-                           const desk_outputs_t *previous,
+static void log_transition(void *context, const desk_outputs_t *previous,
                            const desk_outputs_t *current)
 {
     fake_platform_t *fake = context;

@@ -82,24 +82,24 @@ static esp_err_t configure_axis(esp_hall_hal_t *hal, size_t axis)
         result = pcnt_new_channel(hal->units[axis], &channel_b_config, &hal->channels_b[axis]);
     }
     if (result == ESP_OK) {
-        result = pcnt_channel_set_edge_action(hal->channels_a[axis],
-                                              PCNT_CHANNEL_EDGE_ACTION_DECREASE,
-                                              PCNT_CHANNEL_EDGE_ACTION_INCREASE);
+        result =
+            pcnt_channel_set_edge_action(hal->channels_a[axis], PCNT_CHANNEL_EDGE_ACTION_DECREASE,
+                                         PCNT_CHANNEL_EDGE_ACTION_INCREASE);
     }
     if (result == ESP_OK) {
-        result = pcnt_channel_set_level_action(hal->channels_a[axis],
-                                               PCNT_CHANNEL_LEVEL_ACTION_KEEP,
-                                               PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
+        result =
+            pcnt_channel_set_level_action(hal->channels_a[axis], PCNT_CHANNEL_LEVEL_ACTION_KEEP,
+                                          PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
     }
     if (result == ESP_OK) {
-        result = pcnt_channel_set_edge_action(hal->channels_b[axis],
-                                              PCNT_CHANNEL_EDGE_ACTION_INCREASE,
-                                              PCNT_CHANNEL_EDGE_ACTION_DECREASE);
+        result =
+            pcnt_channel_set_edge_action(hal->channels_b[axis], PCNT_CHANNEL_EDGE_ACTION_INCREASE,
+                                         PCNT_CHANNEL_EDGE_ACTION_DECREASE);
     }
     if (result == ESP_OK) {
-        result = pcnt_channel_set_level_action(hal->channels_b[axis],
-                                               PCNT_CHANNEL_LEVEL_ACTION_KEEP,
-                                               PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
+        result =
+            pcnt_channel_set_level_action(hal->channels_b[axis], PCNT_CHANNEL_LEVEL_ACTION_KEEP,
+                                          PCNT_CHANNEL_LEVEL_ACTION_INVERSE);
     }
     if (result == ESP_OK) {
         result = gpio_set_pull_mode((gpio_num_t)hall_a_pins[axis], GPIO_PULLUP_ONLY);

@@ -16,11 +16,10 @@ static desk_inputs_t fail_safe_inputs(void)
     return inputs;
 }
 
-static void update_immediate_active_debounced_release(bool raw_active,
-                                                       bool *stable_active,
-                                                       uint32_t *release_elapsed_ms,
-                                                       uint32_t release_debounce_ms,
-                                                       uint32_t elapsed_ms)
+static void update_immediate_active_debounced_release(bool raw_active, bool *stable_active,
+                                                      uint32_t *release_elapsed_ms,
+                                                      uint32_t release_debounce_ms,
+                                                      uint32_t elapsed_ms)
 {
     if (raw_active) {
         *stable_active = true;
@@ -49,8 +48,7 @@ void desk_input_filter_init(desk_input_filter_t *filter, uint32_t release_deboun
     }
 }
 
-desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter,
-                                       const desk_inputs_t *raw_inputs,
+desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter, const desk_inputs_t *raw_inputs,
                                        uint32_t elapsed_ms)
 {
     if (filter == NULL || raw_inputs == NULL) {
@@ -61,25 +59,21 @@ desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter,
     filter->stable_inputs.down_pressed = raw_inputs->down_pressed;
     filter->stable_inputs.calibrate_pressed = raw_inputs->calibrate_pressed;
     filter->stable_inputs.hardware_fault = raw_inputs->hardware_fault;
-    update_immediate_active_debounced_release(raw_inputs->emergency_active,
-                                               &filter->stable_inputs.emergency_active,
-                                               &filter->emergency_release_elapsed_ms,
-                                               filter->release_debounce_ms,
-                                               elapsed_ms);
+    update_immediate_active_debounced_release(
+        raw_inputs->emergency_active, &filter->stable_inputs.emergency_active,
+        &filter->emergency_release_elapsed_ms, filter->release_debounce_ms, elapsed_ms);
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         filter->stable_inputs.axis[axis].hall_count = raw_inputs->axis[axis].hall_count;
         filter->stable_inputs.axis[axis].hall_valid = raw_inputs->axis[axis].hall_valid;
-        update_immediate_active_debounced_release(raw_inputs->axis[axis].upper_limit_active,
-                                                   &filter->stable_inputs.axis[axis].upper_limit_active,
-                                                   &filter->upper_release_elapsed_ms[axis],
-                                                   filter->release_debounce_ms,
-                                                   elapsed_ms);
-        update_immediate_active_debounced_release(raw_inputs->axis[axis].lower_limit_active,
-                                                   &filter->stable_inputs.axis[axis].lower_limit_active,
-                                                   &filter->lower_release_elapsed_ms[axis],
-                                                   filter->release_debounce_ms,
-                                                   elapsed_ms);
+        update_immediate_active_debounced_release(
+            raw_inputs->axis[axis].upper_limit_active,
+            &filter->stable_inputs.axis[axis].upper_limit_active,
+            &filter->upper_release_elapsed_ms[axis], filter->release_debounce_ms, elapsed_ms);
+        update_immediate_active_debounced_release(
+            raw_inputs->axis[axis].lower_limit_active,
+            &filter->stable_inputs.axis[axis].lower_limit_active,
+            &filter->lower_release_elapsed_ms[axis], filter->release_debounce_ms, elapsed_ms);
     }
     return filter->stable_inputs;
 }

@@ -13,6 +13,5 @@ typedef struct {
 } desk_input_filter_t;
 
 void desk_input_filter_init(desk_input_filter_t *filter, uint32_t release_debounce_ms);
-desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter,
-                                       const desk_inputs_t *raw_inputs,
+desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter, const desk_inputs_t *raw_inputs,
                                        uint32_t elapsed_ms);

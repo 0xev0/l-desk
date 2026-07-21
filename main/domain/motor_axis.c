@@ -71,8 +71,7 @@ bool desk_outputs_are_coherent(const desk_outputs_t *outputs)
         if (stopped_state && motor->direction != MOTOR_COMMAND_STOP) {
             return false;
         }
-        if (outputs->state == DESK_STATE_MOVING_UP &&
-            motor->direction == MOTOR_COMMAND_DOWN) {
+        if (outputs->state == DESK_STATE_MOVING_UP && motor->direction == MOTOR_COMMAND_DOWN) {
             return false;
         }
         if ((outputs->state == DESK_STATE_MOVING_DOWN ||

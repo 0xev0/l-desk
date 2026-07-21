@@ -10,12 +10,6 @@
 
 static const char *const TAG = "desk_platform";
 
-typedef struct {
-    esp_gpio_hal_t gpio;
-    esp_hall_hal_t hall;
-    bool watchdog_registered;
-} esp_desk_platform_context_t;
-
 static const char *state_name(desk_state_t state)
 {
     switch (state) {
@@ -118,8 +112,7 @@ static void delay_ms(void *context, uint32_t delay)
     esp_time_hal_delay_ms(delay);
 }
 
-static void log_transition(void *context,
-                           const desk_outputs_t *previous,
+static void log_transition(void *context, const desk_outputs_t *previous,
                            const desk_outputs_t *current)
 {
     (void)context;
@@ -127,22 +120,15 @@ static void log_transition(void *context,
     if (current == NULL) {
         return;
     }
-    ESP_LOGI(TAG,
-             "state=%s error=%d warning=%d motors=[%d:%u,%d:%u,%d:%u]",
-             state_name(current->state),
-             (int)current->error,
-             current->feedback_warning,
-             (int)current->motor[0].direction,
-             current->motor[0].duty_permille,
-             (int)current->motor[1].direction,
-             current->motor[1].duty_permille,
-             (int)current->motor[2].direction,
-             current->motor[2].duty_permille);
+    ESP_LOGI(TAG, "state=%s error=%d warning=%d motors=[%d:%u,%d:%u,%d:%u]",
+             state_name(current->state), (int)current->error, current->feedback_warning,
+             (int)current->motor[0].direction, current->motor[0].duty_permille,
+             (int)current->motor[1].direction, current->motor[1].duty_permille,
+             (int)current->motor[2].direction, current->motor[2].duty_permille);
 }
 
-desk_platform_t esp_desk_platform(void)
+desk_platform_t esp_desk_platform_create(esp_desk_platform_context_t *context)
 {
-    static esp_desk_platform_context_t context;
     return (desk_platform_t){
         .initialize = initialize,
         .read_inputs = read_inputs,
@@ -152,6 +138,6 @@ desk_platform_t esp_desk_platform(void)
         .now_ms = now_ms,
         .delay_ms = delay_ms,
         .log_transition = log_transition,
-        .context = &context,
+        .context = context,
     };
 }

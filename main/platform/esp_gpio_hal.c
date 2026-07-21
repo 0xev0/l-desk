@@ -60,29 +60,30 @@ esp_err_t esp_gpio_hal_init(esp_gpio_hal_t *hal)
         return ESP_ERR_INVALID_ARG;
     }
     *hal = (esp_gpio_hal_t){
-        .drivers = {
+        .drivers =
             {
-                .rpwm_pin = PIN_AXIS_FRONT_LEFT_RPWM,
-                .lpwm_pin = PIN_AXIS_FRONT_LEFT_LPWM,
-                .enable_pin = PIN_AXIS_FRONT_LEFT_ENABLE,
-                .rpwm_channel = LEDC_CHANNEL_0,
-                .lpwm_channel = LEDC_CHANNEL_1,
+                {
+                    .rpwm_pin = PIN_AXIS_FRONT_LEFT_RPWM,
+                    .lpwm_pin = PIN_AXIS_FRONT_LEFT_LPWM,
+                    .enable_pin = PIN_AXIS_FRONT_LEFT_ENABLE,
+                    .rpwm_channel = LEDC_CHANNEL_0,
+                    .lpwm_channel = LEDC_CHANNEL_1,
+                },
+                {
+                    .rpwm_pin = PIN_AXIS_FRONT_RIGHT_RPWM,
+                    .lpwm_pin = PIN_AXIS_FRONT_RIGHT_LPWM,
+                    .enable_pin = PIN_AXIS_FRONT_RIGHT_ENABLE,
+                    .rpwm_channel = LEDC_CHANNEL_2,
+                    .lpwm_channel = LEDC_CHANNEL_3,
+                },
+                {
+                    .rpwm_pin = PIN_AXIS_WING_RPWM,
+                    .lpwm_pin = PIN_AXIS_WING_LPWM,
+                    .enable_pin = PIN_AXIS_WING_ENABLE,
+                    .rpwm_channel = LEDC_CHANNEL_4,
+                    .lpwm_channel = LEDC_CHANNEL_5,
+                },
             },
-            {
-                .rpwm_pin = PIN_AXIS_FRONT_RIGHT_RPWM,
-                .lpwm_pin = PIN_AXIS_FRONT_RIGHT_LPWM,
-                .enable_pin = PIN_AXIS_FRONT_RIGHT_ENABLE,
-                .rpwm_channel = LEDC_CHANNEL_2,
-                .lpwm_channel = LEDC_CHANNEL_3,
-            },
-            {
-                .rpwm_pin = PIN_AXIS_WING_RPWM,
-                .lpwm_pin = PIN_AXIS_WING_LPWM,
-                .enable_pin = PIN_AXIS_WING_ENABLE,
-                .rpwm_channel = LEDC_CHANNEL_4,
-                .lpwm_channel = LEDC_CHANNEL_5,
-            },
-        },
     };
 
     esp_err_t result = configure_pwm_timer();
@@ -98,16 +99,12 @@ esp_err_t esp_gpio_hal_init(esp_gpio_hal_t *hal)
     }
 
     gpio_config_t input_config = {
-        .pin_bit_mask = (1ULL << PIN_BUTTON_UP) |
-                        (1ULL << PIN_BUTTON_DOWN) |
-                        (1ULL << PIN_BUTTON_CALIBRATE) |
-                        (1ULL << PIN_EMERGENCY_STOP) |
-                        (1ULL << PIN_AXIS_FRONT_LEFT_LIMIT_UP) |
-                        (1ULL << PIN_AXIS_FRONT_LEFT_LIMIT_DOWN) |
-                        (1ULL << PIN_AXIS_FRONT_RIGHT_LIMIT_UP) |
-                        (1ULL << PIN_AXIS_FRONT_RIGHT_LIMIT_DOWN) |
-                        (1ULL << PIN_AXIS_WING_LIMIT_UP) |
-                        (1ULL << PIN_AXIS_WING_LIMIT_DOWN),
+        .pin_bit_mask =
+            (1ULL << PIN_BUTTON_UP) | (1ULL << PIN_BUTTON_DOWN) | (1ULL << PIN_BUTTON_CALIBRATE) |
+            (1ULL << PIN_EMERGENCY_STOP) | (1ULL << PIN_AXIS_FRONT_LEFT_LIMIT_UP) |
+            (1ULL << PIN_AXIS_FRONT_LEFT_LIMIT_DOWN) | (1ULL << PIN_AXIS_FRONT_RIGHT_LIMIT_UP) |
+            (1ULL << PIN_AXIS_FRONT_RIGHT_LIMIT_DOWN) | (1ULL << PIN_AXIS_WING_LIMIT_UP) |
+            (1ULL << PIN_AXIS_WING_LIMIT_DOWN),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,

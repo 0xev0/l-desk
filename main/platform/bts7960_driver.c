@@ -89,8 +89,7 @@ esp_err_t bts7960_driver_stop(bts7960_driver_t *driver)
     return stop_outputs(driver);
 }
 
-esp_err_t bts7960_driver_apply(bts7960_driver_t *driver,
-                               const desk_axis_output_t *command)
+esp_err_t bts7960_driver_apply(bts7960_driver_t *driver, const desk_axis_output_t *command)
 {
     if (driver == NULL || !driver->initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -111,12 +110,10 @@ esp_err_t bts7960_driver_apply(bts7960_driver_t *driver,
     }
 
     uint32_t duty = ((uint32_t)command->duty_permille * MOTOR_PWM_MAX_DUTY) / 1000U;
-    ledc_channel_t active_channel = command->direction == MOTOR_COMMAND_UP
-                                        ? driver->rpwm_channel
-                                        : driver->lpwm_channel;
-    ledc_channel_t inactive_channel = command->direction == MOTOR_COMMAND_UP
-                                          ? driver->lpwm_channel
-                                          : driver->rpwm_channel;
+    ledc_channel_t active_channel =
+        command->direction == MOTOR_COMMAND_UP ? driver->rpwm_channel : driver->lpwm_channel;
+    ledc_channel_t inactive_channel =
+        command->direction == MOTOR_COMMAND_UP ? driver->lpwm_channel : driver->rpwm_channel;
     esp_err_t result = set_pwm(inactive_channel, 0U);
     if (result == ESP_OK) {
         result = set_pwm(active_channel, duty);

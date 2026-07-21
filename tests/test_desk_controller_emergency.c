@@ -30,7 +30,13 @@ static void unsafe_inputs_cannot_clear_error(void)
     controller_rig_init(&rig, &config);
     rig.inputs.emergency_active = true;
     (void)controller_tick_by(&rig, 10U);
-    TEST_ASSERT_FALSE(desk_controller_request_clear_error(&rig.controller, &rig.inputs, rig.now_ms));
+    TEST_ASSERT_FALSE(
+        desk_controller_request_clear_error(&rig.controller, &rig.inputs, rig.now_ms));
+
+    rig.inputs.emergency_active = false;
+    rig.inputs.hardware_fault = true;
+    TEST_ASSERT_FALSE(
+        desk_controller_request_clear_error(&rig.controller, &rig.inputs, rig.now_ms));
 }
 
 int main(void)
