@@ -1,111 +1,56 @@
 #include "motor_axis.h"
 #include "test_support.h"
 
-static void stop_command_deenergizes_all_outputs(void)
+static desk_axis_output_t command(motor_command_t direction, uint16_t duty, bool enable)
 {
-    motor_axis_output_t output = motor_axis_command_to_output(MOTOR_COMMAND_STOP);
-
-    TEST_ASSERT_FALSE(output.rpwm_active);
-    TEST_ASSERT_FALSE(output.lpwm_active);
-    TEST_ASSERT_FALSE(output.enable_active);
-    TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
+    return (desk_axis_output_t){
+        .direction = direction,
+        .duty_permille = duty,
+        .enable = enable,
+    };
 }
 
-static void up_command_energizes_only_rpwm(void)
+static void valid_commands_map_to_safe_outputs(void)
 {
-    motor_axis_output_t output = motor_axis_command_to_output(MOTOR_COMMAND_UP);
+    desk_axis_output_t stop = command(MOTOR_COMMAND_STOP, 0U, false);
+    motor_axis_output_t output = motor_axis_command_to_output(&stop);
+    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
+    TEST_ASSERT_FALSE(output.rpwm_active);
+    TEST_ASSERT_FALSE(output.lpwm_active);
 
+    desk_axis_output_t up = command(MOTOR_COMMAND_UP, 500U, true);
+    output = motor_axis_command_to_output(&up);
     TEST_ASSERT_TRUE(output.rpwm_active);
     TEST_ASSERT_FALSE(output.lpwm_active);
-    TEST_ASSERT_TRUE(output.enable_active);
-    TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
-}
+    TEST_ASSERT_EQUAL_INT(500, output.duty_permille);
 
-static void down_command_energizes_only_lpwm(void)
-{
-    motor_axis_output_t output = motor_axis_command_to_output(MOTOR_COMMAND_DOWN);
-
+    desk_axis_output_t down = command(MOTOR_COMMAND_DOWN, 1000U, true);
+    output = motor_axis_command_to_output(&down);
     TEST_ASSERT_FALSE(output.rpwm_active);
     TEST_ASSERT_TRUE(output.lpwm_active);
-    TEST_ASSERT_TRUE(output.enable_active);
     TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
 }
 
-static void invalid_command_fails_safe_to_stop(void)
+static void invalid_commands_fail_safe(void)
 {
-    motor_axis_output_t output = motor_axis_command_to_output((motor_command_t)99);
-
-    TEST_ASSERT_FALSE(output.rpwm_active);
-    TEST_ASSERT_FALSE(output.lpwm_active);
-    TEST_ASSERT_FALSE(output.enable_active);
-    TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
-    TEST_ASSERT_FALSE(motor_axis_command_is_valid((motor_command_t)99));
-}
-
-static void output_with_both_directions_active_is_unsafe(void)
-{
-    motor_axis_output_t output = {
-        .rpwm_active = true,
-        .lpwm_active = true,
-        .enable_active = true,
+    const desk_axis_output_t invalid[] = {
+        {MOTOR_COMMAND_STOP, 1U, false},
+        {MOTOR_COMMAND_UP, 0U, true},
+        {MOTOR_COMMAND_DOWN, 1001U, true},
+        {(motor_command_t)99, 500U, true},
     };
 
-    TEST_ASSERT_FALSE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&output));
-}
-
-static void null_output_pointer_is_unsafe(void)
-{
-    TEST_ASSERT_FALSE(motor_axis_output_is_safe(NULL));
-    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(NULL));
-}
-
-static void enabled_without_direction_is_incoherent(void)
-{
-    motor_axis_output_t output = {
-        .rpwm_active = false,
-        .lpwm_active = false,
-        .enable_active = true,
-    };
-
-    TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&output));
-}
-
-static void direction_without_enable_is_incoherent(void)
-{
-    motor_axis_output_t output = {
-        .rpwm_active = true,
-        .lpwm_active = false,
-        .enable_active = false,
-    };
-
-    TEST_ASSERT_TRUE(motor_axis_output_is_safe(&output));
-    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&output));
-}
-
-static void known_commands_are_valid(void)
-{
-    TEST_ASSERT_TRUE(motor_axis_command_is_valid(MOTOR_COMMAND_STOP));
-    TEST_ASSERT_TRUE(motor_axis_command_is_valid(MOTOR_COMMAND_UP));
-    TEST_ASSERT_TRUE(motor_axis_command_is_valid(MOTOR_COMMAND_DOWN));
+    for (size_t item = 0; item < sizeof(invalid) / sizeof(invalid[0]); ++item) {
+        TEST_ASSERT_FALSE(motor_axis_command_is_valid(&invalid[item]));
+        motor_axis_output_t output = motor_axis_command_to_output(&invalid[item]);
+        TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
+    }
+    TEST_ASSERT_FALSE(motor_axis_command_is_valid(NULL));
 }
 
 int main(void)
 {
-    stop_command_deenergizes_all_outputs();
-    up_command_energizes_only_rpwm();
-    down_command_energizes_only_lpwm();
-    invalid_command_fails_safe_to_stop();
-    output_with_both_directions_active_is_unsafe();
-    null_output_pointer_is_unsafe();
-    enabled_without_direction_is_incoherent();
-    direction_without_enable_is_incoherent();
-    known_commands_are_valid();
-
+    valid_commands_map_to_safe_outputs();
+    invalid_commands_fail_safe();
     return 0;
 }

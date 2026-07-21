@@ -1,138 +1,44 @@
-#include "desk_controller.h"
-#include "test_support.h"
+#include "controller_test_helpers.h"
 
-static desk_inputs_t no_inputs(void)
+static void release_gap_cannot_bypass_reversal_deadtime(void)
 {
-    return (desk_inputs_t){0};
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.up_pressed = true;
+    controller_debounce_button(&rig);
+    assert_all_moving(rig.outputs, MOTOR_COMMAND_UP);
+
+    rig.inputs.up_pressed = false;
+    (void)controller_tick_by(&rig, 10U);
+    rig.inputs.down_pressed = true;
+    controller_run_for(&rig, config.button_debounce_ms + 100U);
+    assert_all_stopped(rig.outputs);
+
+    controller_run_for(&rig, config.direction_change_deadtime_ms);
+    assert_all_moving(rig.outputs, MOTOR_COMMAND_DOWN);
 }
 
-static desk_config_t test_config(void)
+static void long_idle_satisfies_deadtime(void)
 {
-    return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 45000,
-    };
-}
-
-static desk_config_t debounce_config(void)
-{
-    return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 45000,
-        .button_debounce_ms = 50,
-    };
-}
-
-static desk_outputs_t tick_elapsed(desk_controller_t *controller, desk_inputs_t inputs, uint32_t elapsed_ms)
-{
-    return desk_controller_tick(controller, &inputs, elapsed_ms);
-}
-
-static void reversing_from_up_to_down_stops_during_deadtime_then_resumes(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.up_pressed = false;
-    inputs.down_pressed = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-
-    outputs = tick_elapsed(&controller, inputs, 299);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-
-    outputs = tick_elapsed(&controller, inputs, 1);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_DOWN, outputs.state);
-}
-
-static void reversing_from_down_to_up_stops_during_deadtime_then_resumes(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.down_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.down_pressed = false;
-    inputs.up_pressed = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-
-    outputs = tick_elapsed(&controller, inputs, 300);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, outputs.state);
-}
-
-static void releasing_button_during_deadtime_cancels_pending_reversal(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.up_pressed = false;
-    inputs.down_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.down_pressed = false;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 500);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void reversal_deadtime_starts_immediately_when_debounce_is_enabled(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = debounce_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 50);
-
-    inputs.up_pressed = false;
-    inputs.down_pressed = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 1);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-
-    outputs = tick_elapsed(&controller, inputs, 300);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_DOWN, outputs.state);
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.up_pressed = true;
+    controller_debounce_button(&rig);
+    rig.inputs.up_pressed = false;
+    (void)controller_tick_by(&rig, 10U);
+    controller_run_for(&rig, config.direction_change_deadtime_ms);
+    rig.inputs.down_pressed = true;
+    controller_debounce_button(&rig);
+    assert_all_moving(rig.outputs, MOTOR_COMMAND_DOWN);
 }
 
 int main(void)
 {
-    reversing_from_up_to_down_stops_during_deadtime_then_resumes();
-    reversing_from_down_to_up_stops_during_deadtime_then_resumes();
-    releasing_button_during_deadtime_cancels_pending_reversal();
-    reversal_deadtime_starts_immediately_when_debounce_is_enabled();
-
+    release_gap_cannot_bypass_reversal_deadtime();
+    long_idle_satisfies_deadtime();
     return 0;
 }

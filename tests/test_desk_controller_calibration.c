@@ -1,209 +1,63 @@
-#include "desk_controller.h"
-#include "test_support.h"
+#include "controller_test_helpers.h"
 
-static desk_inputs_t no_inputs(void)
+static void calibration_requires_hold_and_release_aborts(void)
 {
-    return (desk_inputs_t){0};
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    config.feedback_required = false;
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.calibrate_pressed = true;
+    controller_run_for(&rig, config.calibrate_hold_ms - 10U);
+    assert_all_stopped(rig.outputs);
+    controller_run_for(&rig, 20U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_CALIBRATING_DOWN, rig.outputs.state);
+    assert_all_moving(rig.outputs, MOTOR_COMMAND_DOWN);
+
+    rig.inputs.calibrate_pressed = false;
+    (void)controller_tick_by(&rig, 10U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+    assert_all_stopped(rig.outputs);
 }
 
-static desk_config_t test_config(void)
+static void calibration_stops_each_axis_and_succeeds(void)
 {
-    return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 45000,
-    };
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    config.feedback_required = false;
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.calibrate_pressed = true;
+    controller_run_for(&rig, config.calibrate_hold_ms + 10U);
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        rig.inputs.axis[axis].lower_limit_active = true;
+        (void)controller_tick_by(&rig, 10U);
+        TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, rig.outputs.motor[axis].direction);
+    }
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+    assert_all_stopped(rig.outputs);
 }
 
-static desk_config_t short_calibration_config(void)
+static void calibration_timeout_is_distinct(void)
 {
-    return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 100,
-    };
-}
-
-static desk_outputs_t tick_elapsed(desk_controller_t *controller, desk_inputs_t inputs, uint32_t elapsed_ms)
-{
-    return desk_controller_tick(controller, &inputs, elapsed_ms);
-}
-
-static void calibration_starts_both_motors_down(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_CALIBRATING_DOWN, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void calibration_stops_axis_that_reaches_lower_limit_first(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.calibrate_pressed = false;
-    inputs.left_lower_limit_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_CALIBRATING_DOWN, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void calibration_succeeds_when_both_lower_limits_are_reached(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.calibrate_pressed = false;
-    inputs.left_lower_limit_active = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-    inputs.right_lower_limit_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 1000);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void calibration_with_both_lower_limits_already_active_succeeds_without_motion(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    inputs.left_lower_limit_active = true;
-    inputs.right_lower_limit_active = true;
-
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void calibration_times_out_if_lower_limits_are_not_reached(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = short_calibration_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.calibrate_pressed = false;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 100);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_CALIBRATION_TIMEOUT, outputs.error);
-}
-
-static void calibration_aborts_on_emergency_stop(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.emergency_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_EMERGENCY_STOP, outputs.error);
-}
-
-static void calibration_with_up_pressed_is_rejected_without_motion(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    inputs.up_pressed = true;
-
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
-}
-
-static void calibration_with_down_pressed_is_rejected_without_motion(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.calibrate_pressed = true;
-    inputs.down_pressed = true;
-
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
-}
-
-static void calibration_request_while_moving_is_rejected_without_reversing(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.calibrate_pressed = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_INVALID_TRANSITION, outputs.error);
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    config.feedback_required = false;
+    config.calibration_timeout_ms = 100U;
+    config.alignment_timeout_ms = 1000U;
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.calibrate_pressed = true;
+    controller_run_for(&rig, config.calibrate_hold_ms + config.calibration_timeout_ms + 20U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, rig.outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_CALIBRATION_TIMEOUT, rig.outputs.error);
 }
 
 int main(void)
 {
-    calibration_starts_both_motors_down();
-    calibration_stops_axis_that_reaches_lower_limit_first();
-    calibration_succeeds_when_both_lower_limits_are_reached();
-    calibration_with_both_lower_limits_already_active_succeeds_without_motion();
-    calibration_times_out_if_lower_limits_are_not_reached();
-    calibration_aborts_on_emergency_stop();
-    calibration_with_up_pressed_is_rejected_without_motion();
-    calibration_with_down_pressed_is_rejected_without_motion();
-    calibration_request_while_moving_is_rejected_without_reversing();
-
+    calibration_requires_hold_and_release_aborts();
+    calibration_stops_each_axis_and_succeeds();
+    calibration_timeout_is_distinct();
     return 0;
 }

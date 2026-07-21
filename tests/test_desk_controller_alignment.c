@@ -1,125 +1,46 @@
-#include "desk_controller.h"
-#include "test_support.h"
+#include "controller_test_helpers.h"
 
-static desk_inputs_t no_inputs(void)
+static void all_endstop_arrival_orders_succeed(void)
 {
-    return (desk_inputs_t){0};
-}
-
-static desk_config_t test_config(void)
-{
-    return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 45000,
+    const size_t orders[][DESK_AXIS_COUNT] = {
+        {0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0},
     };
+
+    for (size_t order = 0; order < sizeof(orders) / sizeof(orders[0]); ++order) {
+        controller_test_rig_t rig;
+        desk_config_t config = controller_test_config();
+        controller_rig_init(&rig, &config);
+        controller_reach_idle(&rig);
+        rig.inputs.up_pressed = true;
+        controller_debounce_button(&rig);
+        for (size_t arrival = 0; arrival < DESK_AXIS_COUNT; ++arrival) {
+            rig.inputs.axis[orders[order][arrival]].upper_limit_active = true;
+            (void)controller_tick_by(&rig, 10U);
+        }
+        TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+        assert_all_stopped(rig.outputs);
+    }
 }
 
-static desk_outputs_t tick_elapsed(desk_controller_t *controller, desk_inputs_t inputs, uint32_t elapsed_ms)
+static void missing_endstop_times_out(void)
 {
-    return desk_controller_tick(controller, &inputs, elapsed_ms);
-}
-
-static void moving_up_times_out_if_right_never_reaches_upper_limit(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.left_upper_limit_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, outputs.state);
-
-    outputs = tick_elapsed(&controller, inputs, 2999);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-
-    outputs = tick_elapsed(&controller, inputs, 1);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_ALIGNMENT_TIMEOUT, outputs.error);
-}
-
-static void moving_down_times_out_if_left_never_reaches_lower_limit(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.down_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.right_lower_limit_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 10);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_DOWN, outputs.state);
-
-    outputs = tick_elapsed(&controller, inputs, 3000);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_ALIGNMENT_TIMEOUT, outputs.error);
-}
-
-static void both_upper_limits_within_alignment_timeout_stop_and_return_idle(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    inputs.left_upper_limit_active = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.right_upper_limit_active = true;
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 1000);
-
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.left_motor);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, outputs.right_motor);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-}
-
-static void alignment_timer_resets_after_motion_is_released(void)
-{
-    desk_controller_t controller;
-    desk_config_t config = test_config();
-    desk_controller_init(&controller, &config);
-    desk_inputs_t inputs = no_inputs();
-    inputs.up_pressed = true;
-    inputs.left_upper_limit_active = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    inputs.up_pressed = false;
-    (void)tick_elapsed(&controller, inputs, 5000);
-
-    inputs.up_pressed = true;
-    (void)tick_elapsed(&controller, inputs, 10);
-
-    desk_outputs_t outputs = tick_elapsed(&controller, inputs, 2999);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_NONE, outputs.error);
-    TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, outputs.right_motor);
-
-    outputs = tick_elapsed(&controller, inputs, 1);
-    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, outputs.state);
-    TEST_ASSERT_EQUAL_INT(DESK_ERROR_ALIGNMENT_TIMEOUT, outputs.error);
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    rig.inputs.up_pressed = true;
+    controller_debounce_button(&rig);
+    rig.inputs.axis[0].upper_limit_active = true;
+    (void)controller_tick_by(&rig, 10U);
+    controller_run_for(&rig, config.alignment_timeout_ms);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, rig.outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_ERROR_ALIGNMENT_TIMEOUT, rig.outputs.error);
+    assert_all_stopped(rig.outputs);
 }
 
 int main(void)
 {
-    moving_up_times_out_if_right_never_reaches_upper_limit();
-    moving_down_times_out_if_left_never_reaches_lower_limit();
-    both_upper_limits_within_alignment_timeout_stop_and_return_idle();
-    alignment_timer_resets_after_motion_is_released();
-
+    all_endstop_arrival_orders_succeed();
+    missing_endstop_times_out();
     return 0;
 }

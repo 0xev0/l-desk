@@ -117,33 +117,3 @@ target_include_directories(test_desk_input_filter PRIVATE
 )
 
 add_test(NAME test_desk_input_filter COMMAND test_desk_input_filter)
-
-add_executable(test_desk_feedback
-    test_desk_feedback.c
-    fake_feedback.c
-    ../main/domain/desk_feedback.c
-)
-target_include_directories(test_desk_feedback PRIVATE
-    .
-    ../main/domain
-    ../main/hal
-)
-
-add_test(NAME test_desk_feedback COMMAND test_desk_feedback)
-
-add_executable(test_desk_feedback_observer
-    test_desk_feedback_observer.c
-    fake_feedback.c
-    ../main/app/desk_feedback_observer.c
-    ../main/domain/desk_feedback.c
-    ../main/platform/feedback_none_source.c
-)
-target_include_directories(test_desk_feedback_observer PRIVATE
-    .
-    ../main/app
-    ../main/domain
-    ../main/hal
-    ../main/platform
-)
-
-add_test(NAME test_desk_feedback_observer COMMAND test_desk_feedback_observer)

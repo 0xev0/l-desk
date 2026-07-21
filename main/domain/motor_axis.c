@@ -2,50 +2,39 @@
 
 #include <stddef.h>
 
-bool motor_axis_command_is_valid(motor_command_t command)
+bool motor_axis_command_is_valid(const desk_axis_output_t *command)
 {
-    switch (command) {
-    case MOTOR_COMMAND_STOP:
-    case MOTOR_COMMAND_UP:
-    case MOTOR_COMMAND_DOWN:
-        return true;
-    default:
+    if (command == NULL || command->duty_permille > 1000U) {
         return false;
     }
-}
 
-motor_axis_output_t motor_axis_command_to_output(motor_command_t command)
-{
-    motor_axis_output_t output = {
-        .rpwm_active = false,
-        .lpwm_active = false,
-        .enable_active = false,
-    };
-
-    switch (command) {
-    case MOTOR_COMMAND_UP:
-        output.rpwm_active = true;
-        output.enable_active = true;
-        break;
-    case MOTOR_COMMAND_DOWN:
-        output.lpwm_active = true;
-        output.enable_active = true;
-        break;
-    case MOTOR_COMMAND_STOP:
-    default:
-        break;
+    if (command->direction == MOTOR_COMMAND_STOP) {
+        return !command->enable && command->duty_permille == 0U;
     }
 
+    return (command->direction == MOTOR_COMMAND_UP || command->direction == MOTOR_COMMAND_DOWN) &&
+           command->enable && command->duty_permille > 0U;
+}
+
+motor_axis_output_t motor_axis_command_to_output(const desk_axis_output_t *command)
+{
+    motor_axis_output_t output = {0};
+
+    if (!motor_axis_command_is_valid(command)) {
+        return output;
+    }
+
+    output.enable_active = command->enable;
+    output.duty_permille = command->duty_permille;
+    output.rpwm_active = command->direction == MOTOR_COMMAND_UP;
+    output.lpwm_active = command->direction == MOTOR_COMMAND_DOWN;
     return output;
 }
 
 bool motor_axis_output_is_safe(const motor_axis_output_t *output)
 {
-    if (output == NULL) {
-        return false;
-    }
-
-    return !(output->rpwm_active && output->lpwm_active);
+    return output != NULL && !(output->rpwm_active && output->lpwm_active) &&
+           output->duty_permille <= 1000U;
 }
 
 bool motor_axis_output_is_coherent(const motor_axis_output_t *output)
@@ -55,8 +44,8 @@ bool motor_axis_output_is_coherent(const motor_axis_output_t *output)
     }
 
     if (!output->rpwm_active && !output->lpwm_active) {
-        return !output->enable_active;
+        return !output->enable_active && output->duty_permille == 0U;
     }
 
-    return output->enable_active;
+    return output->enable_active && output->duty_permille > 0U;
 }

@@ -6,197 +6,150 @@
 desk_config_t desk_config_default(void)
 {
     return (desk_config_t){
-        .control_tick_ms = 10,
-        .direction_change_deadtime_ms = 300,
-        .alignment_timeout_ms = 3000,
-        .calibration_timeout_ms = 45000,
-        .button_debounce_ms = 50,
+        .control_tick_ms = 10U,
+        .max_control_interval_ms = 50U,
+        .safe_start_release_ms = 500U,
+        .direction_change_deadtime_ms = 300U,
+        .alignment_timeout_ms = 750U,
+        .calibration_timeout_ms = 45000U,
+        .button_debounce_ms = 50U,
+        .calibrate_hold_ms = 2000U,
+        .soft_start_ms = 500U,
+        .feedback_stall_timeout_ms = 1000U,
+        .feedback_warning_counts = 30,
+        .feedback_stop_counts = 50,
+        .maximum_duty_permille = 1000U,
+        .starting_duty_permille = 300U,
+        .synchronization_trim_permille = 200U,
+        .feedback_required = true,
     };
 }
 
-static desk_outputs_t stopped_outputs(desk_state_t state, desk_error_t error)
+static desk_axis_output_t stopped_axis(void)
 {
-    return (desk_outputs_t){
-        .left_motor = MOTOR_COMMAND_STOP,
-        .right_motor = MOTOR_COMMAND_STOP,
-        .state = state,
-        .error = error,
+    return (desk_axis_output_t){
+        .direction = MOTOR_COMMAND_STOP,
+        .duty_permille = 0U,
+        .enable = false,
     };
+}
+
+static bool any_motor_enabled(const desk_controller_t *controller)
+{
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (controller->motor[axis].enable) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void stop_all(desk_controller_t *controller, uint64_t now_ms)
+{
+    bool was_moving = any_motor_enabled(controller);
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        controller->motor[axis] = stopped_axis();
+    }
+
+    if (was_moving) {
+        controller->direction_stopped_at_ms = now_ms;
+    }
+    controller->motion_was_active = false;
 }
 
 static desk_outputs_t current_outputs(const desk_controller_t *controller)
 {
-    return (desk_outputs_t){
-        .left_motor = controller->left_motor,
-        .right_motor = controller->right_motor,
+    desk_outputs_t outputs = {
         .state = controller->state,
         .error = controller->error,
     };
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = controller->motor[axis];
+    }
+    return outputs;
 }
 
-static void command_stop(desk_controller_t *controller)
+static desk_outputs_t fault_outputs(desk_error_t error)
 {
-    controller->left_motor = MOTOR_COMMAND_STOP;
-    controller->right_motor = MOTOR_COMMAND_STOP;
+    desk_outputs_t outputs = {
+        .state = DESK_STATE_ERROR,
+        .error = error,
+    };
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = stopped_axis();
+    }
+    return outputs;
 }
 
 static void reset_alignment(desk_controller_t *controller)
 {
     controller->alignment_active = false;
-    controller->alignment_direction = MOTOR_COMMAND_STOP;
-    controller->alignment_elapsed_ms = 0;
-    controller->left_aligned = false;
-    controller->right_aligned = false;
+    controller->alignment_started_at_ms = 0U;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        controller->axis_at_endstop[axis] = false;
+    }
 }
 
 static void reset_button_debounce(desk_controller_t *controller)
 {
     controller->debounce_candidate_direction = MOTOR_COMMAND_STOP;
-    controller->button_debounce_elapsed_ms = 0;
+    controller->button_candidate_since_ms = 0U;
 }
 
-static void enter_error(desk_controller_t *controller, desk_error_t error)
+static void enter_error(desk_controller_t *controller, desk_error_t error, uint64_t now_ms)
 {
+    stop_all(controller, now_ms);
     controller->state = DESK_STATE_ERROR;
     controller->error = error;
-    command_stop(controller);
+    controller->pending_direction = MOTOR_COMMAND_STOP;
+    controller->calibrate_timing = false;
 }
 
 static bool has_limit_conflict(const desk_inputs_t *inputs)
 {
-    return (inputs->left_upper_limit_active && inputs->left_lower_limit_active) ||
-           (inputs->right_upper_limit_active && inputs->right_lower_limit_active);
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (inputs->axis[axis].upper_limit_active && inputs->axis[axis].lower_limit_active) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
-static bool manual_button_pressed(const desk_inputs_t *inputs)
+static bool all_feedback_valid(const desk_inputs_t *inputs)
 {
-    return inputs->up_pressed || inputs->down_pressed;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (!inputs->axis[axis].hall_valid) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
-static bool left_limit_effective(const desk_controller_t *controller,
-                                 const desk_inputs_t *inputs,
-                                 motor_command_t direction)
+static bool controls_released(const desk_inputs_t *inputs)
 {
-    bool physical_limit = false;
+    return !inputs->up_pressed && !inputs->down_pressed && !inputs->calibrate_pressed;
+}
 
+static bool safe_start_inputs(const desk_controller_t *controller, const desk_inputs_t *inputs)
+{
+    return controls_released(inputs) && !inputs->emergency_active && !has_limit_conflict(inputs) &&
+           (!controller->config.feedback_required || all_feedback_valid(inputs));
+}
+
+static bool matching_limit_active(const desk_axis_inputs_t *axis, motor_command_t direction)
+{
     if (direction == MOTOR_COMMAND_UP) {
-        physical_limit = inputs->left_upper_limit_active;
-    } else if (direction == MOTOR_COMMAND_DOWN) {
-        physical_limit = inputs->left_lower_limit_active;
+        return axis->upper_limit_active;
     }
-
-    return physical_limit ||
-           (controller->alignment_active &&
-            controller->alignment_direction == direction &&
-            controller->left_aligned);
-}
-
-static bool right_limit_effective(const desk_controller_t *controller,
-                                  const desk_inputs_t *inputs,
-                                  motor_command_t direction)
-{
-    bool physical_limit = false;
-
-    if (direction == MOTOR_COMMAND_UP) {
-        physical_limit = inputs->right_upper_limit_active;
-    } else if (direction == MOTOR_COMMAND_DOWN) {
-        physical_limit = inputs->right_lower_limit_active;
+    if (direction == MOTOR_COMMAND_DOWN) {
+        return axis->lower_limit_active;
     }
-
-    return physical_limit ||
-           (controller->alignment_active &&
-            controller->alignment_direction == direction &&
-            controller->right_aligned);
-}
-
-static void command_up_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
-{
-    bool left_limit_active = left_limit_effective(controller, inputs, MOTOR_COMMAND_UP);
-    bool right_limit_active = right_limit_effective(controller, inputs, MOTOR_COMMAND_UP);
-
-    controller->left_motor = left_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
-    controller->right_motor = right_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_UP;
-
-    if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
-        controller->state = DESK_STATE_IDLE;
-        controller->last_motion_direction = MOTOR_COMMAND_STOP;
-    } else {
-        controller->state = DESK_STATE_MOVING_UP;
-        controller->last_motion_direction = MOTOR_COMMAND_UP;
-    }
-}
-
-static void command_down_with_limits(desk_controller_t *controller, const desk_inputs_t *inputs)
-{
-    bool left_limit_active = left_limit_effective(controller, inputs, MOTOR_COMMAND_DOWN);
-    bool right_limit_active = right_limit_effective(controller, inputs, MOTOR_COMMAND_DOWN);
-
-    controller->left_motor = left_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
-    controller->right_motor = right_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
-
-    if (controller->left_motor == MOTOR_COMMAND_STOP && controller->right_motor == MOTOR_COMMAND_STOP) {
-        controller->state = DESK_STATE_IDLE;
-        controller->last_motion_direction = MOTOR_COMMAND_STOP;
-    } else {
-        controller->state = DESK_STATE_MOVING_DOWN;
-        controller->last_motion_direction = MOTOR_COMMAND_DOWN;
-    }
-}
-
-static uint32_t add_saturating_u32(uint32_t left, uint32_t right)
-{
-    if (UINT_MAX - left < right) {
-        return UINT_MAX;
-    }
-
-    return left + right;
-}
-
-static void update_alignment(desk_controller_t *controller,
-                             const desk_inputs_t *inputs,
-                             motor_command_t direction,
-                             uint32_t elapsed_ms)
-{
-    bool left_limit_active = false;
-    bool right_limit_active = false;
-
-    if (direction == MOTOR_COMMAND_UP || direction == MOTOR_COMMAND_DOWN) {
-        left_limit_active = left_limit_effective(controller, inputs, direction);
-        right_limit_active = right_limit_effective(controller, inputs, direction);
-    } else {
-        reset_alignment(controller);
-        return;
-    }
-
-    if (left_limit_active && right_limit_active) {
-        reset_alignment(controller);
-        controller->state = DESK_STATE_IDLE;
-        controller->last_motion_direction = MOTOR_COMMAND_STOP;
-        command_stop(controller);
-        return;
-    }
-
-    if (!(left_limit_active || right_limit_active)) {
-        reset_alignment(controller);
-        return;
-    }
-
-    if (!controller->alignment_active ||
-        controller->alignment_direction != direction ||
-        controller->left_aligned != left_limit_active ||
-        controller->right_aligned != right_limit_active) {
-        controller->alignment_active = true;
-        controller->alignment_direction = direction;
-        controller->alignment_elapsed_ms = 0;
-        controller->left_aligned = left_limit_active;
-        controller->right_aligned = right_limit_active;
-        return;
-    }
-
-    controller->alignment_elapsed_ms = add_saturating_u32(controller->alignment_elapsed_ms, elapsed_ms);
-    if (controller->alignment_elapsed_ms >= controller->config.alignment_timeout_ms) {
-        enter_error(controller, DESK_ERROR_ALIGNMENT_TIMEOUT);
-    }
+    return false;
 }
 
 static motor_command_t requested_manual_direction(const desk_inputs_t *inputs)
@@ -204,39 +157,9 @@ static motor_command_t requested_manual_direction(const desk_inputs_t *inputs)
     if (inputs->up_pressed && !inputs->down_pressed) {
         return MOTOR_COMMAND_UP;
     }
-
     if (inputs->down_pressed && !inputs->up_pressed) {
         return MOTOR_COMMAND_DOWN;
     }
-
-    return MOTOR_COMMAND_STOP;
-}
-
-static motor_command_t debounced_manual_direction(desk_controller_t *controller,
-                                                  motor_command_t raw_requested,
-                                                  uint32_t elapsed_ms)
-{
-    if (controller->config.button_debounce_ms == 0) {
-        return raw_requested;
-    }
-
-    if (raw_requested == MOTOR_COMMAND_STOP) {
-        reset_button_debounce(controller);
-        return MOTOR_COMMAND_STOP;
-    }
-
-    if (controller->debounce_candidate_direction != raw_requested) {
-        controller->debounce_candidate_direction = raw_requested;
-        controller->button_debounce_elapsed_ms = elapsed_ms;
-    } else {
-        controller->button_debounce_elapsed_ms =
-            add_saturating_u32(controller->button_debounce_elapsed_ms, elapsed_ms);
-    }
-
-    if (controller->button_debounce_elapsed_ms >= controller->config.button_debounce_ms) {
-        return raw_requested;
-    }
-
     return MOTOR_COMMAND_STOP;
 }
 
@@ -246,90 +169,308 @@ static bool is_direction_reversal(motor_command_t previous, motor_command_t requ
            (previous == MOTOR_COMMAND_DOWN && requested == MOTOR_COMMAND_UP);
 }
 
-static void command_manual_direction(desk_controller_t *controller,
+static motor_command_t debounce_direction(desk_controller_t *controller,
+                                          motor_command_t requested,
+                                          uint64_t now_ms)
+{
+    if (requested == MOTOR_COMMAND_STOP) {
+        reset_button_debounce(controller);
+        return MOTOR_COMMAND_STOP;
+    }
+
+    if (controller->config.button_debounce_ms == 0U) {
+        return requested;
+    }
+
+    if (controller->debounce_candidate_direction != requested) {
+        controller->debounce_candidate_direction = requested;
+        controller->button_candidate_since_ms = now_ms;
+        return MOTOR_COMMAND_STOP;
+    }
+
+    if (now_ms - controller->button_candidate_since_ms < controller->config.button_debounce_ms) {
+        return MOTOR_COMMAND_STOP;
+    }
+
+    return requested;
+}
+
+static uint16_t ramped_duty(const desk_controller_t *controller, uint64_t now_ms)
+{
+    uint16_t maximum = controller->config.maximum_duty_permille;
+    uint16_t starting = controller->config.starting_duty_permille;
+    if (maximum > 1000U) {
+        maximum = 1000U;
+    }
+    if (starting > maximum) {
+        starting = maximum;
+    }
+    if (controller->config.soft_start_ms == 0U || now_ms <= controller->motion_started_at_ms) {
+        return controller->config.soft_start_ms == 0U ? maximum : starting;
+    }
+
+    uint64_t elapsed = now_ms - controller->motion_started_at_ms;
+    if (elapsed >= controller->config.soft_start_ms) {
+        return maximum;
+    }
+
+    uint32_t range = (uint32_t)maximum - starting;
+    return (uint16_t)(starting + (range * elapsed) / controller->config.soft_start_ms);
+}
+
+static uint32_t feedback_spread(const desk_inputs_t *inputs, int32_t *minimum, int32_t *maximum)
+{
+    int32_t min_value = inputs->axis[0].hall_count;
+    int32_t max_value = min_value;
+
+    for (size_t axis = 1; axis < DESK_AXIS_COUNT; ++axis) {
+        if (inputs->axis[axis].hall_count < min_value) {
+            min_value = inputs->axis[axis].hall_count;
+        }
+        if (inputs->axis[axis].hall_count > max_value) {
+            max_value = inputs->axis[axis].hall_count;
+        }
+    }
+
+    *minimum = min_value;
+    *maximum = max_value;
+    return (uint32_t)((int64_t)max_value - min_value);
+}
+
+static bool validate_previous_feedback(desk_controller_t *controller,
+                                       const desk_inputs_t *inputs,
+                                       uint64_t now_ms)
+{
+    if (!controller->motion_was_active) {
+        return true;
+    }
+
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (!controller->motor[axis].enable) {
+            continue;
+        }
+        if (controller->config.feedback_required && !inputs->axis[axis].hall_valid) {
+            enter_error(controller, DESK_ERROR_FEEDBACK_MISSING, now_ms);
+            return false;
+        }
+
+        int64_t delta = (int64_t)inputs->axis[axis].hall_count - controller->previous_hall_count[axis];
+        if ((controller->motor[axis].direction == MOTOR_COMMAND_UP && delta < 0) ||
+            (controller->motor[axis].direction == MOTOR_COMMAND_DOWN && delta > 0)) {
+            enter_error(controller, DESK_ERROR_FEEDBACK_DIRECTION, now_ms);
+            return false;
+        }
+
+        if (delta != 0) {
+            controller->feedback_changed_at_ms[axis] = now_ms;
+        } else if (controller->config.feedback_stall_timeout_ms > 0U &&
+                   now_ms - controller->feedback_changed_at_ms[axis] >=
+                       controller->config.feedback_stall_timeout_ms) {
+            enter_error(controller, DESK_ERROR_FEEDBACK_STALL, now_ms);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static void capture_feedback(desk_controller_t *controller, const desk_inputs_t *inputs)
+{
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        controller->previous_hall_count[axis] = inputs->axis[axis].hall_count;
+    }
+    controller->feedback_initialized = true;
+}
+
+static bool update_endstop_alignment(desk_controller_t *controller,
                                      const desk_inputs_t *inputs,
                                      motor_command_t direction,
-                                     uint32_t elapsed_ms)
+                                     uint64_t now_ms)
 {
-    if (direction == MOTOR_COMMAND_UP) {
-        controller->error = DESK_ERROR_NONE;
-        command_up_with_limits(controller, inputs);
-        update_alignment(controller, inputs, direction, elapsed_ms);
-    } else if (direction == MOTOR_COMMAND_DOWN) {
-        controller->error = DESK_ERROR_NONE;
-        command_down_with_limits(controller, inputs);
-        update_alignment(controller, inputs, direction, elapsed_ms);
+    size_t stopped_count = 0U;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (matching_limit_active(&inputs->axis[axis], direction)) {
+            controller->axis_at_endstop[axis] = true;
+        }
+        if (controller->axis_at_endstop[axis]) {
+            ++stopped_count;
+        }
     }
-}
 
-static void finish_calibration_success(desk_controller_t *controller)
-{
-    controller->state = DESK_STATE_IDLE;
-    controller->error = DESK_ERROR_NONE;
-    controller->calibration_elapsed_ms = 0;
-    controller->last_motion_direction = MOTOR_COMMAND_STOP;
-    command_stop(controller);
-    reset_alignment(controller);
-}
-
-static void handle_calibration_down(desk_controller_t *controller,
-                                    const desk_inputs_t *inputs,
-                                    uint32_t elapsed_ms,
-                                    bool starting)
-{
-    if (starting) {
-        controller->state = DESK_STATE_CALIBRATING_DOWN;
+    if (stopped_count == DESK_AXIS_COUNT) {
+        stop_all(controller, now_ms);
+        controller->state = DESK_STATE_IDLE;
         controller->error = DESK_ERROR_NONE;
-        controller->calibration_elapsed_ms = 0;
         reset_alignment(controller);
-    } else {
-        controller->calibration_elapsed_ms = add_saturating_u32(controller->calibration_elapsed_ms, elapsed_ms);
-    }
-
-    if (inputs->left_lower_limit_active && inputs->right_lower_limit_active) {
-        finish_calibration_success(controller);
-        return;
-    }
-
-    if (controller->calibration_elapsed_ms >= controller->config.calibration_timeout_ms) {
-        enter_error(controller, DESK_ERROR_CALIBRATION_TIMEOUT);
-        return;
-    }
-
-    controller->state = DESK_STATE_CALIBRATING_DOWN;
-    controller->left_motor = inputs->left_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
-    controller->right_motor = inputs->right_lower_limit_active ? MOTOR_COMMAND_STOP : MOTOR_COMMAND_DOWN;
-    controller->last_motion_direction = MOTOR_COMMAND_DOWN;
-    update_alignment(controller, inputs, MOTOR_COMMAND_DOWN, elapsed_ms);
-}
-
-static bool handle_pending_deadtime(desk_controller_t *controller,
-                                    const desk_inputs_t *inputs,
-                                    uint32_t elapsed_ms,
-                                    motor_command_t requested)
-{
-    if (controller->pending_direction == MOTOR_COMMAND_STOP) {
         return false;
     }
 
-    if (requested != controller->pending_direction) {
-        controller->pending_direction = MOTOR_COMMAND_STOP;
-        controller->deadtime_remaining_ms = 0;
+    if (stopped_count > 0U) {
+        if (!controller->alignment_active) {
+            controller->alignment_active = true;
+            controller->alignment_started_at_ms = now_ms;
+        } else if (now_ms - controller->alignment_started_at_ms >=
+                   controller->config.alignment_timeout_ms) {
+            enter_error(controller, DESK_ERROR_ALIGNMENT_TIMEOUT, now_ms);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool apply_feedback_synchronization(desk_controller_t *controller,
+                                           const desk_inputs_t *inputs,
+                                           motor_command_t direction,
+                                           uint16_t base_duty,
+                                           uint64_t now_ms,
+                                           uint16_t duty[DESK_AXIS_COUNT])
+{
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        duty[axis] = base_duty;
+    }
+
+    if (!controller->config.feedback_required) {
+        return true;
+    }
+    if (!all_feedback_valid(inputs)) {
+        enter_error(controller, DESK_ERROR_FEEDBACK_MISSING, now_ms);
+        return false;
+    }
+
+    int32_t minimum = 0;
+    int32_t maximum = 0;
+    uint32_t spread = feedback_spread(inputs, &minimum, &maximum);
+    if (spread > (uint32_t)controller->config.feedback_stop_counts) {
+        enter_error(controller, DESK_ERROR_FEEDBACK_SKEW, now_ms);
+        return false;
+    }
+    if (spread < (uint32_t)controller->config.feedback_warning_counts) {
+        return true;
+    }
+
+    uint16_t trim = controller->config.synchronization_trim_permille;
+    uint16_t reduced = base_duty > trim ? (uint16_t)(base_duty - trim) : 1U;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        bool leading_up = direction == MOTOR_COMMAND_UP && inputs->axis[axis].hall_count == maximum;
+        bool leading_down = direction == MOTOR_COMMAND_DOWN && inputs->axis[axis].hall_count == minimum;
+        if (leading_up || leading_down) {
+            duty[axis] = reduced;
+        }
+    }
+    return true;
+}
+
+static void command_direction(desk_controller_t *controller,
+                              const desk_inputs_t *inputs,
+                              motor_command_t direction,
+                              uint64_t now_ms)
+{
+    if (!any_motor_enabled(controller) || controller->last_motion_direction != direction) {
+        controller->motion_started_at_ms = now_ms;
+        for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+            controller->feedback_changed_at_ms[axis] = now_ms;
+        }
+    }
+
+    if (!update_endstop_alignment(controller, inputs, direction, now_ms) ||
+        controller->state == DESK_STATE_ERROR) {
+        return;
+    }
+
+    uint16_t duty[DESK_AXIS_COUNT];
+    if (!apply_feedback_synchronization(controller,
+                                        inputs,
+                                        direction,
+                                        ramped_duty(controller, now_ms),
+                                        now_ms,
+                                        duty)) {
+        return;
+    }
+
+    bool moving = false;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        if (controller->axis_at_endstop[axis]) {
+            controller->motor[axis] = stopped_axis();
+        } else {
+            controller->motor[axis] = (desk_axis_output_t){
+                .direction = direction,
+                .duty_permille = duty[axis],
+                .enable = true,
+            };
+            moving = true;
+        }
+    }
+
+    if (moving) {
+        controller->state = direction == MOTOR_COMMAND_UP ? DESK_STATE_MOVING_UP
+                                                          : DESK_STATE_MOVING_DOWN;
+        controller->last_motion_direction = direction;
+        controller->motion_was_active = true;
+    }
+}
+
+static void handle_safe_start(desk_controller_t *controller,
+                              const desk_inputs_t *inputs,
+                              uint64_t now_ms)
+{
+    stop_all(controller, now_ms);
+    if (!safe_start_inputs(controller, inputs)) {
+        controller->safe_start_timing = false;
+        return;
+    }
+
+    if (!controller->safe_start_timing) {
+        controller->safe_start_timing = true;
+        controller->safe_start_since_ms = now_ms;
+        return;
+    }
+
+    if (now_ms - controller->safe_start_since_ms >= controller->config.safe_start_release_ms) {
         controller->state = DESK_STATE_IDLE;
-        command_stop(controller);
+        controller->safe_start_timing = false;
+    }
+}
+
+static void handle_calibration(desk_controller_t *controller,
+                               const desk_inputs_t *inputs,
+                               uint64_t now_ms)
+{
+    if (!inputs->calibrate_pressed) {
+        stop_all(controller, now_ms);
+        controller->state = DESK_STATE_IDLE;
+        controller->error = DESK_ERROR_NONE;
+        controller->calibrate_timing = false;
+        reset_alignment(controller);
+        return;
+    }
+
+    if (now_ms - controller->calibration_started_at_ms >= controller->config.calibration_timeout_ms) {
+        enter_error(controller, DESK_ERROR_CALIBRATION_TIMEOUT, now_ms);
+        return;
+    }
+
+    command_direction(controller, inputs, MOTOR_COMMAND_DOWN, now_ms);
+    if (controller->state == DESK_STATE_MOVING_DOWN) {
+        controller->state = DESK_STATE_CALIBRATING_DOWN;
+    }
+}
+
+static bool validate_time(desk_controller_t *controller, uint64_t now_ms)
+{
+    if (!controller->tick_initialized) {
+        controller->tick_initialized = true;
+        controller->last_tick_ms = now_ms;
         return true;
     }
 
-    if (elapsed_ms >= controller->deadtime_remaining_ms) {
-        controller->pending_direction = MOTOR_COMMAND_STOP;
-        controller->deadtime_remaining_ms = 0;
-        command_manual_direction(controller, inputs, requested, elapsed_ms);
-        return true;
+    if (now_ms < controller->last_tick_ms ||
+        now_ms - controller->last_tick_ms > controller->config.max_control_interval_ms) {
+        enter_error(controller, DESK_ERROR_CONTROL_LOOP_OVERRUN, now_ms);
+        return false;
     }
 
-    controller->deadtime_remaining_ms -= elapsed_ms;
-    controller->state = DESK_STATE_IDLE;
-    command_stop(controller);
+    controller->last_tick_ms = now_ms;
     return true;
 }
 
@@ -339,113 +480,146 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
         return;
     }
 
-    controller->config = (config != NULL) ? *config : desk_config_default();
-    controller->state = DESK_STATE_IDLE;
-    controller->error = DESK_ERROR_NONE;
-    controller->left_motor = MOTOR_COMMAND_STOP;
-    controller->right_motor = MOTOR_COMMAND_STOP;
-    controller->last_motion_direction = MOTOR_COMMAND_STOP;
-    controller->pending_direction = MOTOR_COMMAND_STOP;
-    controller->alignment_direction = MOTOR_COMMAND_STOP;
-    controller->debounce_candidate_direction = MOTOR_COMMAND_STOP;
-    controller->deadtime_remaining_ms = 0;
-    controller->alignment_elapsed_ms = 0;
-    controller->calibration_elapsed_ms = 0;
-    controller->button_debounce_elapsed_ms = 0;
-    controller->alignment_active = false;
-    controller->left_aligned = false;
-    controller->right_aligned = false;
+    *controller = (desk_controller_t){
+        .config = config != NULL ? *config : desk_config_default(),
+        .state = DESK_STATE_SAFE_START,
+        .error = DESK_ERROR_NONE,
+        .last_motion_direction = MOTOR_COMMAND_STOP,
+        .pending_direction = MOTOR_COMMAND_STOP,
+        .debounce_candidate_direction = MOTOR_COMMAND_STOP,
+    };
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        controller->motor[axis] = stopped_axis();
+    }
 }
 
-desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_inputs_t *inputs, uint32_t elapsed_ms)
+desk_outputs_t desk_controller_tick(desk_controller_t *controller,
+                                    const desk_inputs_t *inputs,
+                                    uint64_t now_ms)
 {
     if (controller == NULL || inputs == NULL) {
-        return stopped_outputs(DESK_STATE_ERROR, DESK_ERROR_HARDWARE_FAULT);
+        return fault_outputs(DESK_ERROR_HARDWARE_FAULT);
     }
-
+    if (!validate_time(controller, now_ms)) {
+        return current_outputs(controller);
+    }
     if (controller->state == DESK_STATE_ERROR) {
-        command_stop(controller);
+        stop_all(controller, now_ms);
         return current_outputs(controller);
     }
-
     if (inputs->emergency_active) {
-        enter_error(controller, DESK_ERROR_EMERGENCY_STOP);
+        enter_error(controller, DESK_ERROR_EMERGENCY_STOP, now_ms);
         return current_outputs(controller);
     }
-
     if (has_limit_conflict(inputs)) {
-        enter_error(controller, DESK_ERROR_LIMIT_CONFLICT);
+        enter_error(controller, DESK_ERROR_LIMIT_CONFLICT, now_ms);
         return current_outputs(controller);
     }
-
     if (inputs->up_pressed && inputs->down_pressed) {
-        enter_error(controller, DESK_ERROR_BOTH_BUTTONS_PRESSED);
+        enter_error(controller, DESK_ERROR_BOTH_BUTTONS_PRESSED, now_ms);
         return current_outputs(controller);
     }
 
+    if (!controller->feedback_initialized) {
+        capture_feedback(controller, inputs);
+    } else if (!validate_previous_feedback(controller, inputs, now_ms)) {
+        capture_feedback(controller, inputs);
+        return current_outputs(controller);
+    }
+    capture_feedback(controller, inputs);
+
+    if (controller->state == DESK_STATE_SAFE_START) {
+        handle_safe_start(controller, inputs, now_ms);
+        return current_outputs(controller);
+    }
     if (controller->state == DESK_STATE_CALIBRATING_DOWN) {
-        handle_calibration_down(controller, inputs, elapsed_ms, false);
+        handle_calibration(controller, inputs, now_ms);
         return current_outputs(controller);
     }
 
     if (inputs->calibrate_pressed) {
-        if (manual_button_pressed(inputs) || controller->state != DESK_STATE_IDLE) {
-            enter_error(controller, DESK_ERROR_INVALID_TRANSITION);
+        if (inputs->up_pressed || inputs->down_pressed || any_motor_enabled(controller)) {
+            enter_error(controller, DESK_ERROR_INVALID_TRANSITION, now_ms);
             return current_outputs(controller);
         }
-
-        handle_calibration_down(controller, inputs, elapsed_ms, true);
+        stop_all(controller, now_ms);
+        if (!controller->calibrate_timing) {
+            controller->calibrate_timing = true;
+            controller->calibrate_pressed_since_ms = now_ms;
+        } else if (now_ms - controller->calibrate_pressed_since_ms >=
+                   controller->config.calibrate_hold_ms) {
+            controller->calibration_started_at_ms = now_ms;
+            controller->state = DESK_STATE_CALIBRATING_DOWN;
+            reset_alignment(controller);
+            handle_calibration(controller, inputs, now_ms);
+        }
         return current_outputs(controller);
     }
+    controller->calibrate_timing = false;
 
     motor_command_t raw_requested = requested_manual_direction(inputs);
-
-    if (handle_pending_deadtime(controller, inputs, elapsed_ms, raw_requested)) {
-        return current_outputs(controller);
-    }
-
-    if (raw_requested != MOTOR_COMMAND_STOP &&
-        is_direction_reversal(controller->last_motion_direction, raw_requested)) {
-        controller->pending_direction = raw_requested;
-        controller->deadtime_remaining_ms = controller->config.direction_change_deadtime_ms;
-        controller->state = DESK_STATE_IDLE;
-        reset_button_debounce(controller);
-        command_stop(controller);
-        return current_outputs(controller);
-    }
-
-    motor_command_t requested = debounced_manual_direction(controller, raw_requested, elapsed_ms);
-    if (raw_requested != MOTOR_COMMAND_STOP && requested == MOTOR_COMMAND_STOP) {
+    if (raw_requested == MOTOR_COMMAND_STOP) {
+        stop_all(controller, now_ms);
         controller->state = DESK_STATE_IDLE;
         controller->error = DESK_ERROR_NONE;
-        command_stop(controller);
+        controller->pending_direction = MOTOR_COMMAND_STOP;
+        reset_button_debounce(controller);
+        reset_alignment(controller);
         return current_outputs(controller);
     }
 
-    if (requested != MOTOR_COMMAND_STOP) {
-        command_manual_direction(controller, inputs, requested, elapsed_ms);
+    motor_command_t requested = debounce_direction(controller, raw_requested, now_ms);
+    if (is_direction_reversal(controller->last_motion_direction, raw_requested)) {
+        if (any_motor_enabled(controller)) {
+            stop_all(controller, now_ms);
+            controller->pending_direction = raw_requested;
+            controller->deadtime_until_ms = now_ms + controller->config.direction_change_deadtime_ms;
+        } else if (controller->pending_direction != raw_requested) {
+            controller->pending_direction = raw_requested;
+            uint64_t elapsed_stopped = now_ms - controller->direction_stopped_at_ms;
+            uint64_t remaining = elapsed_stopped >= controller->config.direction_change_deadtime_ms
+                                     ? 0U
+                                     : controller->config.direction_change_deadtime_ms - elapsed_stopped;
+            controller->deadtime_until_ms = now_ms + remaining;
+        }
+
+        if (now_ms < controller->deadtime_until_ms) {
+            controller->state = DESK_STATE_IDLE;
+            stop_all(controller, now_ms);
+            return current_outputs(controller);
+        }
+        controller->pending_direction = MOTOR_COMMAND_STOP;
+    }
+
+    if (requested == MOTOR_COMMAND_STOP) {
+        stop_all(controller, now_ms);
+        controller->state = DESK_STATE_IDLE;
         return current_outputs(controller);
     }
 
-    controller->state = DESK_STATE_IDLE;
-    controller->error = DESK_ERROR_NONE;
-    command_stop(controller);
-    controller->pending_direction = MOTOR_COMMAND_STOP;
-    controller->deadtime_remaining_ms = 0;
-    controller->last_motion_direction = MOTOR_COMMAND_STOP;
-    reset_button_debounce(controller);
-    reset_alignment(controller);
+    command_direction(controller, inputs, requested, now_ms);
     return current_outputs(controller);
 }
 
-void desk_controller_request_clear_error(desk_controller_t *controller)
+bool desk_controller_request_clear_error(desk_controller_t *controller,
+                                         const desk_inputs_t *inputs,
+                                         uint64_t now_ms)
 {
-    if (controller == NULL || controller->state != DESK_STATE_ERROR) {
-        return;
+    if (controller == NULL || inputs == NULL || controller->state != DESK_STATE_ERROR ||
+        !safe_start_inputs(controller, inputs)) {
+        return false;
     }
 
-    controller->state = DESK_STATE_IDLE;
+    stop_all(controller, now_ms);
+    controller->state = DESK_STATE_SAFE_START;
     controller->error = DESK_ERROR_NONE;
-    command_stop(controller);
+    controller->last_motion_direction = MOTOR_COMMAND_STOP;
+    controller->pending_direction = MOTOR_COMMAND_STOP;
+    controller->tick_initialized = false;
+    controller->feedback_initialized = false;
+    controller->safe_start_timing = false;
+    controller->calibrate_timing = false;
     reset_button_debounce(controller);
+    reset_alignment(controller);
+    return true;
 }

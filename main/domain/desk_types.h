@@ -3,9 +3,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define DESK_AXIS_COUNT 3U
+
 typedef enum {
-    DESK_AXIS_LEFT = 0,
-    DESK_AXIS_RIGHT = 1,
+    DESK_AXIS_FRONT_LEFT = 0,
+    DESK_AXIS_FRONT_RIGHT,
+    DESK_AXIS_WING,
 } desk_axis_t;
 
 typedef enum {
@@ -15,7 +18,8 @@ typedef enum {
 } motor_command_t;
 
 typedef enum {
-    DESK_STATE_IDLE = 0,
+    DESK_STATE_SAFE_START = 0,
+    DESK_STATE_IDLE,
     DESK_STATE_MOVING_UP,
     DESK_STATE_MOVING_DOWN,
     DESK_STATE_CALIBRATING_DOWN,
@@ -31,22 +35,37 @@ typedef enum {
     DESK_ERROR_LIMIT_CONFLICT,
     DESK_ERROR_INVALID_TRANSITION,
     DESK_ERROR_HARDWARE_FAULT,
+    DESK_ERROR_CONTROL_LOOP_OVERRUN,
+    DESK_ERROR_FEEDBACK_MISSING,
+    DESK_ERROR_FEEDBACK_DIRECTION,
+    DESK_ERROR_FEEDBACK_STALL,
+    DESK_ERROR_FEEDBACK_SKEW,
 } desk_error_t;
 
 typedef struct {
+    bool upper_limit_active;
+    bool lower_limit_active;
+    int32_t hall_count;
+    bool hall_valid;
+} desk_axis_inputs_t;
+
+typedef struct {
+    desk_axis_inputs_t axis[DESK_AXIS_COUNT];
     bool up_pressed;
     bool down_pressed;
     bool calibrate_pressed;
     bool emergency_active;
-    bool left_upper_limit_active;
-    bool left_lower_limit_active;
-    bool right_upper_limit_active;
-    bool right_lower_limit_active;
 } desk_inputs_t;
 
 typedef struct {
-    motor_command_t left_motor;
-    motor_command_t right_motor;
+    motor_command_t direction;
+    uint16_t duty_permille;
+    bool enable;
+} desk_axis_output_t;
+
+typedef struct {
+    desk_axis_output_t motor[DESK_AXIS_COUNT];
     desk_state_t state;
     desk_error_t error;
+    bool feedback_warning;
 } desk_outputs_t;
