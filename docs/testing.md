@@ -31,7 +31,7 @@ LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
 
 Merge with `llvm-profdata` and report with `llvm-cov` over
 `desk_controller.c`, `motor_axis.c`, `desk_app.c`, and `desk_input_filter.c`.
-The current result is 95.83% lines, 95.79% regions, and 100% functions. Keep
+The current result is 95.65% lines, 95.73% regions, and 100% functions. Keep
 line coverage at or above 95% and all safety transitions explicitly tested.
 
 ## Covered Behavior

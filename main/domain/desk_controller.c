@@ -64,6 +64,7 @@ static desk_outputs_t current_outputs(const desk_controller_t *controller)
         .state = controller->state,
         .error = controller->error,
         .feedback_warning = controller->feedback_warning,
+        .calibration_completed = controller->calibration_completed,
     };
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
@@ -305,6 +306,7 @@ static void capture_feedback(desk_controller_t *controller, const desk_inputs_t 
 static bool update_endstop_alignment(desk_controller_t *controller, const desk_inputs_t *inputs,
                                      motor_command_t direction, uint64_t now_ms)
 {
+    bool calibration_active = controller->state == DESK_STATE_CALIBRATING_DOWN;
     size_t stopped_count = 0U;
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         if (matching_limit_active(&inputs->axis[axis], direction)) {
@@ -319,6 +321,9 @@ static bool update_endstop_alignment(desk_controller_t *controller, const desk_i
         stop_all(controller, now_ms);
         controller->state = DESK_STATE_IDLE;
         controller->error = DESK_ERROR_NONE;
+        controller->calibration_completed = calibration_active;
+        controller->calibration_release_required = calibration_active;
+        controller->calibrate_timing = false;
         reset_alignment(controller);
         return false;
     }
@@ -517,6 +522,7 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     if (controller == NULL || inputs == NULL) {
         return fault_outputs(DESK_ERROR_HARDWARE_FAULT);
     }
+    controller->calibration_completed = false;
     if (!validate_time(controller, now_ms)) {
         return current_outputs(controller);
     }
@@ -555,6 +561,16 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     }
     if (controller->state == DESK_STATE_CALIBRATING_DOWN) {
         handle_calibration(controller, inputs, now_ms);
+        return current_outputs(controller);
+    }
+
+    if (controller->calibration_release_required) {
+        stop_all(controller, now_ms);
+        if (!inputs->calibrate_pressed) {
+            controller->calibration_release_required = false;
+        } else if (inputs->up_pressed || inputs->down_pressed) {
+            enter_error(controller, DESK_ERROR_INVALID_TRANSITION, now_ms);
+        }
         return current_outputs(controller);
     }
 
@@ -641,6 +657,7 @@ bool desk_controller_request_clear_error(desk_controller_t *controller, const de
     controller->feedback_initialized = false;
     controller->safe_start_timing = false;
     controller->calibrate_timing = false;
+    controller->calibration_release_required = false;
     reset_button_debounce(controller);
     reset_alignment(controller);
     return true;

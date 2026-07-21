@@ -104,10 +104,7 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     update_clear_error_request(app, &inputs, now_ms);
     desk_outputs_t outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
 
-    bool calibration_completed = app->last_outputs.state == DESK_STATE_CALIBRATING_DOWN &&
-                                 outputs.state == DESK_STATE_IDLE &&
-                                 outputs.error == DESK_ERROR_NONE;
-    if (calibration_completed && !app->platform.zero_hall_counts(app->platform.context)) {
+    if (outputs.calibration_completed && !app->platform.zero_hall_counts(app->platform.context)) {
         desk_controller_report_hardware_fault(&app->controller, now_ms);
         outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
     }
@@ -124,7 +121,8 @@ desk_outputs_t desk_app_step(desk_app_t *app)
 
     if (app->platform.log_transition != NULL &&
         (outputs.state != app->last_outputs.state || outputs.error != app->last_outputs.error ||
-         outputs.feedback_warning != app->last_outputs.feedback_warning)) {
+         outputs.feedback_warning != app->last_outputs.feedback_warning ||
+         outputs.calibration_completed)) {
         app->platform.log_transition(app->platform.context, &app->last_outputs, &outputs);
     }
     app->last_outputs = outputs;

@@ -33,6 +33,8 @@ typedef struct {
     bool alignment_active;
     bool motion_was_active;
     bool feedback_warning;
+    bool calibration_completed;
+    bool calibration_release_required;
 } desk_controller_t;
 
 void desk_controller_init(desk_controller_t *controller, const desk_config_t *config);

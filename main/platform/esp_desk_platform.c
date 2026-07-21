@@ -120,11 +120,12 @@ static void log_transition(void *context, const desk_outputs_t *previous,
     if (current == NULL) {
         return;
     }
-    ESP_LOGI(TAG, "state=%s error=%d warning=%d motors=[%d:%u,%d:%u,%d:%u]",
+    ESP_LOGI(TAG, "state=%s error=%d warning=%d calibrated=%d motors=[%d:%u,%d:%u,%d:%u]",
              state_name(current->state), (int)current->error, current->feedback_warning,
-             (int)current->motor[0].direction, current->motor[0].duty_permille,
-             (int)current->motor[1].direction, current->motor[1].duty_permille,
-             (int)current->motor[2].direction, current->motor[2].duty_permille);
+             current->calibration_completed, (int)current->motor[0].direction,
+             current->motor[0].duty_permille, (int)current->motor[1].direction,
+             current->motor[1].duty_permille, (int)current->motor[2].direction,
+             current->motor[2].duty_permille);
 }
 
 desk_platform_t esp_desk_platform_create(esp_desk_platform_context_t *context)

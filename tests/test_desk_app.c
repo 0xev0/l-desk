@@ -129,6 +129,28 @@ static void calibration_zero_failure_enters_hardware_error(void)
     assert_outputs_stopped(fake.outputs);
 }
 
+static void calibration_at_lower_limits_zeroes_hall_once(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = desk_config_default();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    run_steps(&app, &fake, 52U);
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        fake.inputs.axis[axis].lower_limit_active = true;
+    }
+    fake.inputs.calibrate_pressed = true;
+    run_steps(&app, &fake, 201U);
+
+    TEST_ASSERT_EQUAL_INT(1, fake.zero_calls);
+    TEST_ASSERT_TRUE(fake.outputs.calibration_completed);
+    assert_outputs_stopped(fake.outputs);
+    run_steps(&app, &fake, 201U);
+    TEST_ASSERT_EQUAL_INT(1, fake.zero_calls);
+}
+
 static void incomplete_platform_is_rejected(void)
 {
     desk_app_t app;
@@ -150,6 +172,7 @@ int main(void)
     read_and_write_failures_fail_stopped();
     error_clear_requires_long_hold_and_release();
     calibration_zero_failure_enters_hardware_error();
+    calibration_at_lower_limits_zeroes_hall_once();
     incomplete_platform_is_rejected();
     return 0;
 }

@@ -36,7 +36,14 @@ static void calibration_stops_each_axis_and_succeeds(void)
         TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, rig.outputs.motor[axis].direction);
     }
     TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+    TEST_ASSERT_TRUE(rig.outputs.calibration_completed);
     assert_all_stopped(rig.outputs);
+
+    (void)controller_tick_by(&rig, 10U);
+    TEST_ASSERT_FALSE(rig.outputs.calibration_completed);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+    rig.inputs.calibrate_pressed = false;
+    (void)controller_tick_by(&rig, 10U);
 }
 
 static void calibration_timeout_is_distinct(void)
@@ -54,10 +61,31 @@ static void calibration_timeout_is_distinct(void)
     TEST_ASSERT_EQUAL_INT(DESK_ERROR_CALIBRATION_TIMEOUT, rig.outputs.error);
 }
 
+static void calibration_already_at_all_lower_limits_completes_once(void)
+{
+    controller_test_rig_t rig;
+    desk_config_t config = controller_test_config();
+    config.feedback_required = false;
+    controller_rig_init(&rig, &config);
+    controller_reach_idle(&rig);
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        rig.inputs.axis[axis].lower_limit_active = true;
+    }
+    rig.inputs.calibrate_pressed = true;
+    controller_run_for(&rig, config.calibrate_hold_ms + 10U);
+
+    TEST_ASSERT_TRUE(rig.outputs.calibration_completed);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, rig.outputs.state);
+    assert_all_stopped(rig.outputs);
+    controller_run_for(&rig, config.calibrate_hold_ms + 20U);
+    TEST_ASSERT_FALSE(rig.outputs.calibration_completed);
+}
+
 int main(void)
 {
     calibration_requires_hold_and_release_aborts();
     calibration_stops_each_axis_and_succeeds();
     calibration_timeout_is_distinct();
+    calibration_already_at_all_lower_limits_completes_once();
     return 0;
 }

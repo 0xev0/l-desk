@@ -69,4 +69,5 @@ typedef struct {
     desk_state_t state;
     desk_error_t error;
     bool feedback_warning;
+    bool calibration_completed;
 } desk_outputs_t;
