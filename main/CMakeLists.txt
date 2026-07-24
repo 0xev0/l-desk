@@ -11,6 +11,7 @@ idf_component_register(
         "hal/bts7960_sequence.c"
         "network/desk_control_protocol.c"
         "network/desk_auth.c"
+        "network/desk_form_codec.c"
         "network/desk_network_config.c"
         "network/esp_network_store.c"
         "network/esp_wifi_service.c"

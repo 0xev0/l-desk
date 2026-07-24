@@ -101,6 +101,16 @@ target_include_directories(test_network_config PRIVATE
 
 add_test(NAME test_network_config COMMAND test_network_config)
 
+add_executable(test_form_codec
+    test_form_codec.c
+    ../main/network/desk_form_codec.c
+)
+target_include_directories(test_form_codec PRIVATE
+    ../main/network
+)
+
+add_test(NAME test_form_codec COMMAND test_form_codec)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c
