@@ -80,6 +80,16 @@ target_include_directories(test_control_protocol PRIVATE
 
 add_test(NAME test_control_protocol COMMAND test_control_protocol)
 
+add_executable(test_auth
+    test_auth.c
+    ../main/network/desk_auth.c
+)
+target_include_directories(test_auth PRIVATE
+    ../main/network
+)
+
+add_test(NAME test_auth COMMAND test_auth)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c

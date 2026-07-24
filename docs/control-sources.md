@@ -69,6 +69,12 @@ JSON, or ESP-IDF. A future transport may only enqueue:
 Network parsing, authentication, provisioning, rate limits, and client
 ownership remain outside the control task.
 
+Authentication uses a device-generated 128-bit administration secret, never a
+default password. A successful login creates one of four fixed RAM sessions
+with an eight-hour maximum lifetime. Secrets use bounded hexadecimal parsing
+and constant-time comparison. Five failed logins block new attempts for one
+minute. Sessions disappear on reboot and can be logged out explicitly.
+
 ## WebSocket Command Frame
 
 Movement uses a fixed 12-byte binary frame. Multi-byte values are big-endian.

@@ -10,6 +10,7 @@ idf_component_register(
         "domain/position_scale.c"
         "hal/bts7960_sequence.c"
         "network/desk_control_protocol.c"
+        "network/desk_auth.c"
         "platform/bts7960_driver.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
