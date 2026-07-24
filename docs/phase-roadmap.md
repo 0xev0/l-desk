@@ -1,6 +1,6 @@
 # Phase Roadmap
 
-## P1: Three-Axis Safety Controller
+## P1: Three-Axis Motion Controller
 
 Status: firmware implemented and host/build verified; physical commissioning
 pending.
@@ -8,7 +8,7 @@ pending.
 - Three independent BTS7960 outputs
 - Six NC limits, E-stop, manual UP/DOWN, and downward calibration
 - `SAFE_START`, dead time, alignment timeout, watchdog, and latched errors
-- HAL isolation, fake platform, sanitizers, and safety property tests
+- HAL isolation, fake platform, sanitizers, and controller invariant tests
 
 ## P2: Hall Feedback and Synchronization
 
@@ -30,7 +30,7 @@ Status: implemented and host/build verified.
 - Exclusive remote lease with sequence anti-replay and 250 ms expiry
 - Local preemption revokes the remote session
 - Bounded static cross-core request queue
-- Remote high-level calibration and safety-validated error clear
+- Remote high-level calibration and controller-validated fault reset
 
 ## P3: Presets
 
@@ -57,17 +57,17 @@ the final DevKit are pending.
 - Pending image confirmation requires stopped control and network startup
 - Restricted ROM download mode retains a controlled recovery path
 
-## P5A: WiFi Mobile Control
+## P5A: Wi-Fi and Browser Control
 
 Status: implemented and host/build verified; RF and phone testing pending.
 
-- Validated NVS credentials, WiFi STA, protected first-boot/recovery SoftAP
-- Authenticated local HTTPS/WSS API and responsive mobile web UI
-- Local, hybrid, and buttonless mobile-only modes
+- Validated NVS credentials, Wi-Fi STA, and a password-protected setup SoftAP
+- Authenticated local HTTPS/WSS API and responsive browser controls
+- Buttons, buttons + phone, and buttonless phone modes
 - Exclusive lease, anti-replay sequence, 100 ms heartbeat, 250 ms expiry
-- Remote calibration is hold-to-run; error clear returns safely to `SAFE_START`
+- Remote calibration is hold-to-run; fault reset returns to `SAFE_START`
 - No raw motor, GPIO, per-axis, or unattended motion command
-- Network failure never affects local safety operation
+- Network failure resolves phone input to STOP and leaves button control running
 
 ## P5B: Optional Integrations
 

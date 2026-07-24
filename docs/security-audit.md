@@ -80,7 +80,8 @@ maintenance responsibility.
 
 ## Release Decision
 
-The firmware is software-build-ready. It is not desk-production-ready until:
+The firmware builds and passes its software checks. The assembled desk still
+requires:
 
 - exact hardware and wiring pass commissioning;
 - signing/TLS keys and device records have protected backups;

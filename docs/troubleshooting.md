@@ -26,7 +26,7 @@ software command, when motion is unexpected.
 
 Fix the cause first. Release UP/DOWN and E-stop and ensure there is no limit
 conflict. Hold CALIBRATE for 2 seconds then release, or use authenticated
-**Clear error** in the web console. Both paths revalidate safety inputs and
+**Reset fault** in the browser controls. Both paths revalidate the stop inputs and
 return to `SAFE_START`; neither moves automatically.
 
 If the error immediately returns, do not repeatedly clear it. Remove motor power

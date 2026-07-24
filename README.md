@@ -5,105 +5,109 @@
 [![ESP-IDF 6.0](https://img.shields.io/badge/ESP--IDF-6.0-E7352C)](https://docs.espressif.com/projects/esp-idf/en/v6.0/)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-4B5563)](LICENSE)
 
-Safety-conscious ESP-IDF firmware for a three-actuator L-shaped standing desk.
-It combines local or phone-first hold-to-run control, Hall synchronization,
-fail-safe NC endstops, presets, diagnostics, and signed A/B updates without a
-custom PCB or cloud dependency.
+ESP-IDF firmware for an L-shaped standing desk with three Hall-feedback
+columns. The desk can run from physical buttons, a phone browser, or both. It
+also provides calibration, synchronized motion, three presets, diagnostics,
+and signed A/B firmware updates without a custom PCB or cloud service.
 
 > [!CAUTION]
 > This project controls heavy moving hardware. It is not a certified safety
-> controller. Never replace a physical E-stop, DC contactor, fuses, hard stops,
-> rigid guides, correct wiring, grounding, or commissioning with firmware.
+> controller. Use a physical E-stop, a DC-rated contactor, fuses, mechanical
+> hard stops, rigid guides, suitable wiring, and a documented commissioning
+> process.
 
-![L-Desk mobile web control console](docs/control-console.png)
+![L-Desk browser controls](docs/control-console.png)
 
-## Release Status
+## Project Status
 
-| Area | Software | Physical validation |
+| Area | Firmware | Hardware work still required |
 | --- | --- | --- |
-| P1 manual control and fail-safe limits | Implemented and host-tested | Required on final wiring |
-| P2 Hall feedback and three-axis synchronization | Implemented and host-tested | Hall scale, skew, and load tests required |
-| P3 three hold-to-run presets | Implemented and host-tested | Target tolerance test required |
-| P4 diagnostics, signed A/B OTA, rollback | Implemented and build-tested | Power-loss and rollback tests required |
-| P5A WiFi, HTTPS/WSS, mobile web controller | Implemented and integration-tested | LAN, certificate, and disconnect tests required |
-| P5B BLE, MQTT, Home Assistant | Deliberately deferred | Not applicable |
+| P1 manual motion and NC endstops | Implemented and host-tested | Verify wiring, E-stop, limits, and reversal on the desk |
+| P2 Hall feedback and three-column leveling | Implemented and host-tested | Measure Hall scale, skew, load, stall, and thermal behavior |
+| P3 hold-to-run presets | Implemented and host-tested | Verify target tolerance over the full load range |
+| P4 diagnostics and signed A/B updates | Implemented and build-tested | Run power-loss, rollback, and recovery tests |
+| P5A Wi-Fi and browser control | Implemented and integration-tested | Test LAN coverage, certificates, reconnects, and phone sleep |
+| P5B BLE, MQTT, and Home Assistant | Deferred | Not part of the first hardware release |
 
-The source, tests, and secure ESP-IDF 6.0 profile build successfully. The desk
-is **not hardware release-ready** until every gate in
-[commissioning](docs/commissioning.md) passes with the exact actuators,
-drivers, PSU, frame, wiring, and enclosure. Release tags are forbidden before
-that evidence exists.
+The source, host tests, and ESP-IDF 6.0 release profile build successfully.
+That does not make the assembled desk release-ready. The exact actuators,
+drivers, PSU, frame, wiring, and enclosure must pass every
+[commissioning check](docs/commissioning.md) before a release tag is created.
 
-Firmware identifies itself from the Git revision through ESP-IDF and exposes
-that value in the authenticated API and console. The
-[latest GitHub release](../../releases/latest), when one exists, is the
-canonical public version; test and workflow badges are generated from CI
-results rather than manually entered counts.
+The firmware version comes from the Git revision and appears in the API and
+browser console. CI generates the workflow and test badges. The
+[latest GitHub release](../../releases/latest), when present, is the public
+release record.
 
-## What Is Implemented
+## Controls
 
-- Three independently controlled BTS7960 axes with validated STOP/enable/PWM
-  sequencing and mutually exclusive directions.
-- `SAFE_START`, `UNREFERENCED`, `IDLE`, motion, calibration, and latched `ERROR`
-  states with no movement on boot or error clear.
-- Six NC endstops, monitored E-stop, both-buttons fault, limit conflict, 300 ms
-  reversal dead time, soft start, and bounded endstop alignment.
-- ESP-IDF PCNT quadrature Hall capture, per-axis integer scaling, direction and
-  stall checks, warning trim, and hard skew stop.
-- Local-only, hybrid, and remote-only control. Physical motion buttons are
-  optional; E-stop, Hall feedback, and endstops are not.
-- 100 ms WebSocket command heartbeat with a 250 ms lease, replay protection,
-  one remote owner, and STOP on release, blur, page hide, timeout, or disconnect.
-- Responsive English web console with explicit HTTPS/API/control-channel
-  status, accessible dialogs, safe error clear, provisioning, diagnostics,
-  presets, and signed OTA.
-- Per-device credentials, HTTPS/WSS only, secure cookies, exact origin checks,
-  login throttling, encrypted NVS, Secure Boot v2, flash encryption,
-  anti-rollback, and restricted ROM download mode in the production profile.
-- Pure C domain, injected HAL, fixed-size state, static control queues, bounded
-  work, strict warnings, ASan/UBSan, integration tests, and exhaustive safety
-  properties.
+The input mode can be changed from the browser:
+
+| Mode | Physical buttons | Phone |
+| --- | --- | --- |
+| Buttons | Enabled | Status and maintenance only |
+| Buttons + phone | Enabled | Enabled |
+| Phone | Not required | Enabled |
+
+Every movement is hold-to-run. Releasing a button or touch control sends STOP.
+Phone movement also stops when the page loses focus, the screen locks, the
+WebSocket closes, or its 250 ms command lease expires. The network sends
+high-level requests to the application controller; it cannot address a GPIO or
+motor directly.
+
+The motion controller includes:
+
+- three independently driven BTS7960 axes;
+- `SAFE_START`, `UNREFERENCED`, `IDLE`, motion, calibration, and latched
+  `ERROR` states;
+- six NC endstops, monitored E-stop, reversal dead time, soft start, and
+  bounded endstop alignment;
+- PCNT quadrature capture, integer Hall scaling, direction/stall checks, trim,
+  and a hard skew stop;
+- downward calibration and three referenced height presets.
+
+Boot and error reset never start movement.
 
 ## Reference Hardware
 
-- ESP32-S3-DevKitC-1U-N8R8 and external 2.4 GHz antenna
-- Three identical 12 V linear actuators with 500 mm stroke and quadrature Hall
+- ESP32-S3-DevKitC-1U-N8R8 with an external 2.4 GHz antenna
+- Three matching 12 V, 500 mm linear actuators with quadrature Hall feedback
 - Three matching BTS7960/IBT-2 modules
 - Six NC upper/lower endstops
 - Optional UP, DOWN, and CALIBRATE buttons
-- Dual-contact latching NC E-stop and correctly rated DC contactor
-- Sized 12 V PSU, 12 V to 5 V regulator, main/motor/logic fuses
+- Dual-contact latching NC E-stop and a correctly rated DC contactor
+- Sized 12 V PSU, 12 V to 5 V regulator, and main/motor/logic fuses
 - Rigid guided frame, enclosure, terminal blocks, ferrules, strain relief, and
   locking signal connectors
 
 Read [hardware](docs/hardware.md), [electrical design](docs/electrical-design.md),
-and the provisional [pinout](docs/pinout.md) before purchasing or wiring.
-Never power an actuator or BTS7960 motor rail from PC USB.
+and the provisional [pinout](docs/pinout.md) before buying or wiring parts.
+Never power an actuator or a BTS7960 motor rail from PC USB.
 
-## First Boot Without Buttons
+## First Start Without Buttons
 
-Buttons are active-low inputs with internal pull-ups. An unconnected button is
-therefore read as released, so a buttonless installation does not remain stuck
-in `SAFE_START`.
+Unconnected button inputs read as released because they use internal pull-ups.
+A phone-only build can therefore leave `SAFE_START` without temporary motion
+buttons.
 
-1. Build a per-device release and keep its generated credential record offline.
-2. Commission Secure Boot and flash encryption with motor power physically
-   disconnected.
-3. Join the protected `Desk-XXXXXX` provisioning network using that record.
-4. Open the provisioned HTTPS hostname/IP trusted by the certificate, sign in,
-   and configure the home WiFi.
-5. Hold **CAL** in the web console until all three lower limits establish the
-   Hall reference.
-6. Select **Remote only** if local motion buttons will not be installed.
+1. Build one release for the device and store its generated credential record
+   offline.
+2. Commission Secure Boot and flash encryption with motor power disconnected.
+3. Join the `Desk-XXXXXX` setup network using the generated credentials.
+4. Open the desk's HTTPS address, enter its device code, and configure home
+   Wi-Fi.
+5. Hold **Calibrate** in the browser until all three lower endstops establish
+   the Hall reference.
+6. Set **Control inputs** to **Phone** if no local motion buttons are fitted.
 
-Hybrid mode is the first-boot default. Error clear from the web console
-revalidates every safety input, returns to `SAFE_START`, and never moves the
-desk automatically.
+The default is **Buttons + phone**. Resetting a fault rechecks the inputs,
+returns to `SAFE_START`, and leaves all motors stopped. See
+[networking](docs/networking.md) and
+[control sources](docs/control-sources.md) for protocol details.
 
-See [networking](docs/networking.md) and
-[control sources](docs/control-sources.md) for the complete behavior.
+## Build and Test
 
-## Host Quality Gates
+Host tests use CTest with AddressSanitizer and UndefinedBehaviorSanitizer:
 
 ```sh
 cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
@@ -112,16 +116,37 @@ ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   ctest --test-dir build-host --output-on-failure
 ```
 
-The test badge is generated from CTest JUnit output, and CI rejects a stale
-badge. The suite covers pure domain behavior, fake-HAL application flows,
-output sequencing, security codecs, persistent records, HTTP integration,
-embedded web contracts, and exhaustive input properties. Coverage and hardware
-gates are documented in [testing](docs/testing.md).
+The tests cover the domain state machine, fake-HAL application flows, motor
+output sequencing, persistence records, network codecs, HTTP integration, web
+contracts, and bounded input properties. CI rejects a stale test badge. See
+[testing](docs/testing.md) for coverage and hardware gates.
 
-## Secure Firmware Build
+Every image embeds a TLS identity and device code, including local builds.
+Generate development-only material outside the repository before running
+ESP-IDF:
 
-The production flow requires a long-lived RSA-3072 signing key, a per-device TLS
-certificate/key, and an offline destination for generated credentials:
+```sh
+mkdir -p "$TMPDIR/ldesk-dev"
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout "$TMPDIR/ldesk-dev/tls.key" \
+  -out "$TMPDIR/ldesk-dev/tls.crt" \
+  -subj "/CN=ldesk.local" -days 8
+python3 tools/generate_build_secrets.py \
+  --certificate "$TMPDIR/ldesk-dev/tls.crt" \
+  --private-key "$TMPDIR/ldesk-dev/tls.key" \
+  --output main/generated/desk_build_secrets.inc \
+  --credentials-output "$TMPDIR/ldesk-dev/credentials.txt"
+source "$HOME/.espressif/tools/activate_idf_v6.0.sh"
+idf.py set-target esp32s3
+idf.py build
+```
+
+Do not use these short-lived development credentials on the assembled desk.
+
+## Release Image
+
+A release build needs an RSA-3072 signing key, one TLS certificate/key pair per
+desk, and an offline path for the generated device credentials:
 
 ```sh
 tools/build_release.sh \
@@ -131,33 +156,33 @@ tools/build_release.sh \
   --credentials-output /secure/desk-device-credentials.txt
 ```
 
-The script builds the production profile, signs and verifies bootloader/app
-artifacts, writes SHA-256 checksums, and removes generated secrets from the
-source tree. It does **not** burn eFuses or flash hardware.
+The script builds the release profile, signs and verifies the bootloader and
+application, writes SHA-256 checksums, and removes generated secrets from the
+working tree. It does not burn eFuses or flash the board.
 
-Secure first flash is partly irreversible. Follow
-[secure deployment](docs/secure-deployment.md) exactly; do not substitute a
-plain `idf.py flash` command from an older guide.
+The first protected flash changes device state and is partly irreversible.
+Follow [device provisioning](docs/secure-deployment.md) with the exact board;
+do not substitute an older `idf.py flash` procedure.
 
-## HTTPS Deployment
+## Browser Access
 
-The ESP32 always serves HTTPS/WSS. Two practical trust models are supported:
+The ESP32 serves HTTPS and WSS. Two deployment models are documented:
 
-- **Direct LAN:** issue a long-lived per-device certificate from a private CA
-  trusted by the phone and local DNS.
-- **Reverse proxy:** keep the device on an isolated LAN with its private
-  certificate and place Caddy/Nginx in front with a public hostname and
-  automatically renewed Let's Encrypt certificate. Proxy HTTPS and WSS; never
-  expose the ESP32 directly to the Internet.
+- **Direct LAN:** issue a per-device certificate from a private CA trusted by
+  the phone and resolve a stable local hostname.
+- **Reverse proxy:** keep the ESP32 on an isolated LAN and put Caddy or Nginx in
+  front of it. The proxy can use a public hostname and renew a Let's Encrypt
+  certificate while forwarding HTTPS and WSS.
 
-Let's Encrypt does not issue certificates for `localhost`, and short-lived
-public certificates should not be baked into firmware. See
-[networking](docs/networking.md) for the topology and trust boundaries.
+Let's Encrypt does not issue certificates for `localhost`, and its short-lived
+certificates should not be compiled into firmware. Do not expose the ESP32
+directly to the Internet. The full topology is in
+[networking](docs/networking.md).
 
 ## Architecture
 
 ```text
-physical buttons / HTTPS-WSS mobile client
+physical buttons / HTTPS-WSS browser
                  |
         bounded command arbiter
                  |
@@ -167,15 +192,14 @@ physical buttons / HTTPS-WSS mobile client
                  |
           injected HAL contract
                  |
- GPIO / LEDC / PCNT / NVS / WiFi / OTA
+ GPIO / LEDC / PCNT / NVS / Wi-Fi / OTA
 ```
 
 Domain and HAL code contain no ESP-IDF, FreeRTOS, GPIO, or heap dependency.
-Networking can submit only high-level leased actions and cannot address a motor
-or pin. Read [architecture](docs/architecture.md) and
-[safety](docs/safety.md) for invariants and failure behavior.
+Read [architecture](docs/architecture.md) for module boundaries and
+[safety](docs/safety.md) for stop conditions and known limits.
 
-## Community
+## Repository Guide
 
 - [Contributing](CONTRIBUTING.md)
 - [Support](SUPPORT.md)
@@ -192,8 +216,8 @@ or pin. Read [architecture](docs/architecture.md) and
 
 Copyright 2026 Alvaro Diago de Aguilar.
 
-This project is source-available under the
+The code is available under the
 [PolyForm Noncommercial License 1.0.0](LICENSE). Personal, hobby, educational,
 research, charitable, and other permitted noncommercial uses are welcome.
-Commercial use is not granted. Because of that field-of-use restriction, this
-license is not OSI-approved open source.
+Commercial use is not granted. The field-of-use restriction means this is a
+source-available project, not OSI-approved open source.

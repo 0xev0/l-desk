@@ -1,6 +1,6 @@
 # Testing
 
-## Host Suite
+## Host Tests
 
 CTest gates cover domain, application, input filtering, fake HAL, BTS7960
 sequencing, network codecs/security, the mobile HTTPS contract, web source and
@@ -15,7 +15,7 @@ ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   ctest --test-dir build-host --output-on-failure
 ```
 
-The suite includes 2,048 combinations of six limit states plus UP, DOWN,
+The tests include 2,048 combinations of six limit states plus UP, DOWN,
 CALIBRATE, E-stop, and hardware-fault inputs. Every error output must stop all
 three axes; every logical motor command must map to mutually exclusive RPWM and
 LPWM.
@@ -73,8 +73,11 @@ still run AddressSanitizer and UndefinedBehaviorSanitizer.
 
 ## ESP-IDF Build
 
+Generate development transport credentials before the first local build. The
+complete command sequence is in the README. Then run:
+
 ```sh
-source /Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh
+source "$HOME/.espressif/tools/activate_idf_v6.0.sh"
 idf.py build
 ```
 

@@ -2,8 +2,8 @@
 
 ## Startup and Buttonless Provisioning
 
-The control task starts before networking. NVS, HTTPS, or WiFi failure cannot
-bypass local safety control; it only makes remote control unavailable.
+The control task starts before networking. NVS, HTTPS, or Wi-Fi failure makes
+phone control unavailable but does not change local motion handling.
 
 Every production image receives a unique 128-bit administration secret and TLS
 certificate/key during the offline build. The generated credential record
@@ -17,11 +17,12 @@ No credential is printed on UART. Store the record offline with the device.
 
 With no station credentials, the ESP32 creates `Desk-XXXXXX`. Join it with the
 provisioning password, open the HTTPS address covered by the device
-certificate, sign in, and submit the target SSID/password. Credentials are
-bounded, validated, and committed as one versioned encrypted NVS record.
+certificate, enter the device code, and submit the target SSID/password.
+Credentials are bounded, validated, and committed as one versioned encrypted
+NVS record.
 
 After ten failed station connections, the protected provisioning AP returns as
-a recovery path. WiFi power saving remains disabled because remote hold-to-run
+a recovery path. Wi-Fi power saving remains disabled because remote hold-to-run
 uses a 100 ms heartbeat with a 250 ms expiry.
 
 UP, DOWN, and CALIBRATE inputs have pull-ups. If those optional buttons are not
@@ -74,16 +75,16 @@ API responses use no-store, CSP, frame denial, MIME-sniffing denial,
 referrer/permissions restrictions, and same-origin isolation headers.
 Sessions disappear on reboot and logout expires the cookie.
 
-## Mobile Web Controller
+## Browser Controller
 
 The embedded responsive console exposes:
 
-- HTTPS, API session, and control WebSocket status independently;
+- device/API and motion WebSocket status;
 - desk state, height, skew, Hall counts, and each endstop;
 - hold-to-run UP, DOWN, CALIBRATE, and M1/M2/M3;
-- local, hybrid, and remote-only modes;
-- safe error clear back to `SAFE_START`;
-- WiFi provisioning, diagnostics, and signed OTA;
+- Buttons, Buttons + phone, and Phone input modes;
+- fault reset back to `SAFE_START`;
+- Wi-Fi setup, diagnostics, and signed OTA;
 - cancelable dialogs, time-bounded requests, and visible errors.
 
 Each held motion control opens one authenticated `desk-control-v1` WSS channel.
@@ -98,12 +99,12 @@ allowed.
 | --- | --- | --- |
 | `GET` | `/api/v1/status` | Authenticated controller and health snapshot |
 | `GET` | `/api/v1/diagnostics` | Bounded reset/error history |
-| `POST` | `/api/v1/session` | Exchange token for secure session |
+| `POST` | `/api/v1/session` | Exchange device code for a session |
 | `DELETE` | `/api/v1/session` | Logout |
-| `POST` | `/api/v1/provision` | Apply WiFi credentials while stopped |
+| `POST` | `/api/v1/provision` | Apply Wi-Fi credentials while stopped |
 | `POST` | `/api/v1/mode` | Persist control mode while stopped |
-| `POST` | `/api/v1/error/clear` | Request safety-validated error clear |
-| `POST` | `/api/v1/preset` | Capture a safe referenced preset |
+| `POST` | `/api/v1/error/clear` | Request controller-validated fault reset |
+| `POST` | `/api/v1/preset` | Capture the current referenced height |
 | `POST` | `/api/v1/update` | Stream signed firmware to inactive OTA slot |
 | `GET` | `/api/v1/control` | Authenticated binary WSS upgrade |
 

@@ -8,13 +8,13 @@ All notable changes will be recorded here. The project follows
 
 ### Added
 
-- Three-axis safety controller with Hall synchronization and calibration.
+- Three-axis motion controller with Hall synchronization and calibration.
 - Local, hybrid, and mobile-only hold-to-run control.
 - Three hold-to-run presets.
-- Authenticated HTTPS/WSS mobile console and protected WiFi provisioning.
+- Authenticated HTTPS/WSS browser controls and protected Wi-Fi setup.
 - Signed A/B OTA, diagnostics, Secure Boot, flash encryption, and anti-rollback
   production profile.
-- Host sanitizers, coverage gates, safety properties, and ESP-IDF 6.0 CI.
+- Host sanitizers, coverage gates, controller invariants, and ESP-IDF 6.0 CI.
 
 ### Security
 

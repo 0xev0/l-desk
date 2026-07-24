@@ -2,13 +2,13 @@
 
 ## Operating Modes
 
-The application supports three explicit modes above the safety controller:
+The application supports three input modes above the motion state machine:
 
-| Mode | Physical controls | Authenticated remote controls |
-|---|---|---|
-| `LOCAL_ONLY` | Used | Rejected |
-| `HYBRID` | Used and takes priority | Used while no local control is active |
-| `MOBILE_ONLY` | Motion controls ignored | Used |
+| Firmware mode | Browser label | Physical controls | Authenticated phone controls |
+|---|---|---|---|
+| `LOCAL_ONLY` | Buttons | Used | Rejected |
+| `HYBRID` | Buttons + phone | Used and takes priority | Used while no local control is active |
+| `MOBILE_ONLY` | Phone | Motion controls ignored | Used |
 
 Limits, Hall feedback, the monitored E-stop, timing checks, and output
 validation are never disabled by these modes. `MOBILE_ONLY` permits omitting
@@ -67,7 +67,7 @@ JSON, or ESP-IDF. The current HTTPS/WSS transport may only enqueue:
 - high-level UP, DOWN, CALIBRATE, or STOP;
 - high-level hold-to-run M1, M2, or M3;
 - select an allowed control mode;
-- request a safety-validated error clear.
+- request a controller-validated fault reset.
 
 Network parsing, authentication, provisioning, rate limits, and client
 ownership remain outside the control task. The ESP-IDF WiFi backend runs as a
@@ -109,5 +109,5 @@ application queue.
 
 Remote movement is exposed only through the authenticated HTTPS/WSS
 service. Session ownership, same-origin checks, one-client exclusivity,
-disconnect revocation, and the mobile client all sit above the unchanged
-safety controller.
+disconnect revocation, and the browser client all sit above the unchanged
+motion state machine.

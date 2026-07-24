@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   host:
-    name: Host safety suite
+    name: Host tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -117,7 +117,7 @@ jobs:
           retention-days: 14
 
   firmware:
-    name: ESP-IDF 6.0 secure profile
+    name: ESP-IDF 6.0 release build
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     container:
@@ -139,7 +139,7 @@ jobs:
             --output main/generated/desk_build_secrets.inc \
             --credentials-output /tmp/desk-ci-credentials.txt
 
-      - name: Configure secure production profile
+      - name: Configure release profile
         run: |
           idf.py -B build-ci \
             -D "SDKCONFIG=build-ci/sdkconfig" \
