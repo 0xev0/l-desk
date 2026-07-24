@@ -8,3 +8,5 @@ sdkconfig.old
 managed_components/
 __pycache__/
 *.py[cod]
+secure_boot_signing_key.pem
+*.private.pem
