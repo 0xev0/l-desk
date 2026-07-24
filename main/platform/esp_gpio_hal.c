@@ -83,10 +83,13 @@ esp_err_t esp_gpio_hal_init(esp_gpio_hal_t *hal)
                     .rpwm_channel = LEDC_CHANNEL_4,
                     .lpwm_channel = LEDC_CHANNEL_5,
                 },
-            },
+        },
     };
 
-    esp_err_t result = configure_pwm_timer();
+    esp_err_t result = board_config_validate_pins();
+    if (result == ESP_OK) {
+        result = configure_pwm_timer();
+    }
     if (result != ESP_OK) {
         return result;
     }

@@ -24,6 +24,7 @@ idf_component_register(
         "network/esp_http_api.c"
         "network/esp_network_service.c"
         "network/esp_wifi_service.c"
+        "platform/board_config.c"
         "platform/bts7960_driver.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
