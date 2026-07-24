@@ -32,7 +32,7 @@ LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
 
 Merge with `llvm-profdata` and report with `llvm-cov` over
 all host-testable domain, application, and output-sequencing modules. The
-current result is at least 96.7% lines, 84.6% branches, and 100% functions.
+current result is 96.96% lines, 85.94% branches, and 100% functions.
 Keep line coverage at or above 95% and all safety transitions
 explicitly tested.
 
@@ -77,7 +77,8 @@ idf.py build
 
 The main component treats format, shadow, conversion, signed conversion, and
 enum-switch warnings as errors. Host builds additionally use pedantic and
-undefined-macro warnings.
+undefined-macro warnings. Release firmware uses ESP-IDF performance
+optimization, assertions, and strong compiler stack checking.
 
 ## Hardware Tests Still Required
 

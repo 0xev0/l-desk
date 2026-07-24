@@ -13,6 +13,11 @@ used for later releases. Keep that key outside the repository and back it up
 offline. Losing it prevents trusted OTA updates; leaking it lets an attacker
 sign accepted updates.
 
+Anti-rollback eFuses are not enabled. A correctly signed older image can
+therefore be installed deliberately for homelab recovery. Treat release
+version selection as an authenticated administrator responsibility and never
+expose the HTTP service outside a trusted local network.
+
 ## Build and Sign
 
 Generate one key outside the repository:
