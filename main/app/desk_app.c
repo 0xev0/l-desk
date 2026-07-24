@@ -159,6 +159,14 @@ bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id)
     return desk_command_arbiter_acquire_remote_lease(&app->command_arbiter, lease_id);
 }
 
+bool desk_app_release_remote_lease(desk_app_t *app, uint64_t lease_id)
+{
+    if (app == NULL || !app->initialized) {
+        return false;
+    }
+    return desk_command_arbiter_release_remote_lease(&app->command_arbiter, lease_id);
+}
+
 bool desk_app_submit_remote_command(desk_app_t *app, const desk_remote_command_t *command)
 {
     if (app == NULL || !app->initialized || command == NULL) {

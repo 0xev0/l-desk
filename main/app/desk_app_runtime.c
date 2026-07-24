@@ -10,6 +10,7 @@
 
 typedef enum {
     DESK_RUNTIME_REQUEST_REMOTE_LEASE = 0,
+    DESK_RUNTIME_REQUEST_REMOTE_RELEASE,
     DESK_RUNTIME_REQUEST_REMOTE_COMMAND,
     DESK_RUNTIME_REQUEST_CONTROL_MODE,
 } desk_runtime_request_kind_t;
@@ -63,6 +64,9 @@ static void process_control_requests(desk_app_runtime_t *desk_runtime)
         switch (request.kind) {
         case DESK_RUNTIME_REQUEST_REMOTE_LEASE:
             (void)desk_app_acquire_remote_lease(&desk_runtime->app, request.remote_lease_id);
+            break;
+        case DESK_RUNTIME_REQUEST_REMOTE_RELEASE:
+            (void)desk_app_release_remote_lease(&desk_runtime->app, request.remote_lease_id);
             break;
         case DESK_RUNTIME_REQUEST_REMOTE_COMMAND:
             (void)desk_app_submit_remote_command(&desk_runtime->app, &request.remote_command);
@@ -189,6 +193,14 @@ bool desk_app_queue_remote_lease(uint64_t lease_id)
 {
     return queue_runtime_request(&(desk_runtime_request_t){
         .kind = DESK_RUNTIME_REQUEST_REMOTE_LEASE,
+        .remote_lease_id = lease_id,
+    });
+}
+
+bool desk_app_queue_remote_release(uint64_t lease_id)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_REMOTE_RELEASE,
         .remote_lease_id = lease_id,
     });
 }

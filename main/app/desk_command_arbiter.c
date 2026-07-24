@@ -88,6 +88,17 @@ bool desk_command_arbiter_acquire_remote_lease(desk_command_arbiter_t *arbiter,
     return true;
 }
 
+bool desk_command_arbiter_release_remote_lease(desk_command_arbiter_t *arbiter,
+                                               uint64_t lease_id)
+{
+    if (arbiter == NULL || lease_id == 0U || !arbiter->remote_lease_authorized ||
+        lease_id != arbiter->remote_lease_id) {
+        return false;
+    }
+    desk_command_arbiter_cancel_remote(arbiter);
+    return true;
+}
+
 static bool expire_remote_if_needed(desk_command_arbiter_t *arbiter, uint64_t now_ms)
 {
     if (!arbiter->remote_active || now_ms < arbiter->remote_expires_at_ms) {

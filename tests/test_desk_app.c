@@ -200,10 +200,12 @@ static void incomplete_platform_is_rejected(void)
 
     TEST_ASSERT_FALSE(desk_app_set_control_mode(NULL, DESK_CONTROL_MODE_HYBRID));
     TEST_ASSERT_FALSE(desk_app_acquire_remote_lease(NULL, 1U));
+    TEST_ASSERT_FALSE(desk_app_release_remote_lease(NULL, 1U));
     TEST_ASSERT_FALSE(desk_app_submit_remote_command(NULL, NULL));
     app = (desk_app_t){0};
     TEST_ASSERT_FALSE(desk_app_set_control_mode(&app, DESK_CONTROL_MODE_HYBRID));
     TEST_ASSERT_FALSE(desk_app_acquire_remote_lease(&app, 1U));
+    TEST_ASSERT_FALSE(desk_app_release_remote_lease(&app, 1U));
     TEST_ASSERT_FALSE(desk_app_submit_remote_command(&app, NULL));
     TEST_ASSERT_FALSE(desk_app_get_status(NULL, NULL));
     TEST_ASSERT_FALSE(desk_app_get_status(&app, NULL));
@@ -309,6 +311,37 @@ static void mode_changes_cancel_remote_motion_and_local_only_rejects_network(voi
     TEST_ASSERT_FALSE(desk_app_submit_remote_command(&app, &remote));
 }
 
+static void transport_disconnect_stops_only_its_active_lease(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = app_test_config();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    run_steps(&app, &fake, 52U);
+
+    desk_remote_command_t remote = {
+        .lease_id = 88U,
+        .sequence = 1U,
+        .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+        .action = DESK_CONTROL_ACTION_DOWN,
+    };
+    TEST_ASSERT_TRUE(desk_app_acquire_remote_lease(&app, remote.lease_id));
+    TEST_ASSERT_TRUE(desk_app_submit_remote_command(&app, &remote));
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_DOWN, fake.outputs.state);
+
+    TEST_ASSERT_FALSE(desk_app_release_remote_lease(&app, 87U));
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_DOWN, fake.outputs.state);
+
+    TEST_ASSERT_TRUE(desk_app_release_remote_lease(&app, remote.lease_id));
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+}
+
 static void mobile_only_can_clear_an_error_without_physical_buttons(void)
 {
     fake_platform_t fake;
@@ -357,6 +390,7 @@ int main(void)
     mobile_only_ignores_buttons_and_requires_a_live_remote_lease();
     local_control_preempts_remote_in_hybrid_mode();
     mode_changes_cancel_remote_motion_and_local_only_rejects_network();
+    transport_disconnect_stops_only_its_active_lease();
     mobile_only_can_clear_an_error_without_physical_buttons();
     return 0;
 }

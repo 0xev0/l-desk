@@ -65,6 +65,8 @@ bool desk_command_arbiter_acquire_remote_lease(desk_command_arbiter_t *arbiter,
 bool desk_command_arbiter_submit_remote(desk_command_arbiter_t *arbiter,
                                         const desk_remote_command_t *command,
                                         uint64_t now_ms);
+bool desk_command_arbiter_release_remote_lease(desk_command_arbiter_t *arbiter,
+                                               uint64_t lease_id);
 void desk_command_arbiter_cancel_remote(desk_command_arbiter_t *arbiter);
 desk_resolved_controls_t desk_command_arbiter_resolve(
     desk_command_arbiter_t *arbiter, const desk_local_controls_t *local, uint64_t now_ms);

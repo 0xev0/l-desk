@@ -220,6 +220,28 @@ static void command_arriving_after_expiry_cannot_revive_the_lease(void)
     TEST_ASSERT_FALSE(arbiter.remote_active);
 }
 
+static void only_the_owning_transport_can_release_a_remote_lease(void)
+{
+    desk_command_arbiter_t arbiter;
+    desk_command_arbiter_init(&arbiter, DESK_CONTROL_MODE_HYBRID);
+    TEST_ASSERT_TRUE(desk_command_arbiter_acquire_remote_lease(&arbiter, 50U));
+    desk_remote_command_t remote = remote_command(50U, 1U, DESK_CONTROL_ACTION_UP, 200U);
+    TEST_ASSERT_TRUE(desk_command_arbiter_submit_remote(&arbiter, &remote, 100U));
+
+    TEST_ASSERT_FALSE(desk_command_arbiter_release_remote_lease(NULL, 50U));
+    TEST_ASSERT_FALSE(desk_command_arbiter_release_remote_lease(&arbiter, 0U));
+    TEST_ASSERT_FALSE(desk_command_arbiter_release_remote_lease(&arbiter, 51U));
+    TEST_ASSERT_TRUE(arbiter.remote_active);
+    TEST_ASSERT_TRUE(arbiter.remote_lease_authorized);
+
+    TEST_ASSERT_TRUE(desk_command_arbiter_release_remote_lease(&arbiter, 50U));
+    TEST_ASSERT_FALSE(arbiter.remote_active);
+    TEST_ASSERT_FALSE(arbiter.remote_lease_authorized);
+    remote.sequence = 2U;
+    TEST_ASSERT_FALSE(desk_command_arbiter_submit_remote(&arbiter, &remote, 101U));
+    TEST_ASSERT_FALSE(desk_command_arbiter_release_remote_lease(&arbiter, 50U));
+}
+
 int main(void)
 {
     each_mode_has_explicit_source_behavior();
@@ -230,5 +252,6 @@ int main(void)
     unchanged_inputs_are_deterministic_and_both_local_buttons_survive();
     local_preemption_revokes_the_session_and_blocks_old_heartbeats();
     command_arriving_after_expiry_cannot_revive_the_lease();
+    only_the_owning_transport_can_release_a_remote_lease();
     return 0;
 }
