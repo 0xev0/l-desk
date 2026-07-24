@@ -5,7 +5,7 @@ import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 
 WEB_ROOT = Path(__file__).resolve().parents[1] / "main" / "web"
@@ -47,6 +47,7 @@ def status_payload():
         "wifi_connected": True,
         "preset_target_reached": False,
         "preset_storage_fault": False,
+        "motion_inhibited": False,
         "presets": PRESETS,
         "axes": axes,
         "diagnostics": {
@@ -77,6 +78,12 @@ class DeskMockHandler(BaseHTTPRequestHandler):
     def authenticated(self):
         return SESSION_COOKIE in self.headers.get("Cookie", "")
 
+    def same_origin(self):
+        origin = self.headers.get("Origin", "")
+        host = self.headers.get("Host", "")
+        parsed = urlsplit(origin)
+        return parsed.scheme == "http" and parsed.netloc == host and parsed.path == ""
+
     def read_form(self):
         length = int(self.headers.get("Content-Length", "0"))
         if length <= 0 or length > 256:
@@ -89,6 +96,13 @@ class DeskMockHandler(BaseHTTPRequestHandler):
                 self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "authentication_required"})
             else:
                 self.send_json(HTTPStatus.OK, status_payload())
+            return
+        if self.path == "/api/v1/diagnostics":
+            if not self.authenticated():
+                self.send_json(HTTPStatus.UNAUTHORIZED,
+                               {"error": "authentication_required"})
+            else:
+                self.send_json(HTTPStatus.OK, {"events": []})
             return
         assets = {
             "/": ("index.html", "text/html; charset=utf-8"),
@@ -108,11 +122,17 @@ class DeskMockHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/v1/update":
-            if not self.authenticated():
-                self.send_json(HTTPStatus.UNAUTHORIZED,
-                               {"error": "authentication_required"})
+            if not self.authenticated() or not self.same_origin():
+                self.send_json(HTTPStatus.FORBIDDEN, {"error": "update_forbidden"})
+                return
+            if self.headers.get("Content-Type") != "application/octet-stream":
+                self.send_json(HTTPStatus.FORBIDDEN, {"error": "update_forbidden"})
                 return
             length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0:
+                self.send_json(HTTPStatus.CONFLICT,
+                               {"error": "desk_must_be_stopped"})
+                return
             self.rfile.read(length)
             self.send_json(HTTPStatus.OK, {"rebooting": True})
             return
@@ -128,7 +148,7 @@ class DeskMockHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json(HTTPStatus.OK, {"authenticated": True}, SESSION_COOKIE)
             return
-        if not self.authenticated():
+        if not self.authenticated() or not self.same_origin():
             self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "authentication_required"})
             return
         if self.path == "/api/v1/preset":
@@ -142,7 +162,27 @@ class DeskMockHandler(BaseHTTPRequestHandler):
         if self.path == "/api/v1/mode":
             self.send_json(HTTPStatus.OK, {"updated": True})
             return
+        if self.path == "/api/v1/provision":
+            if "ssid" not in form or "password" not in form:
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_credentials"})
+                return
+            self.send_json(HTTPStatus.OK, {"restarting_wifi": True})
+            return
         self.send_error(HTTPStatus.NOT_FOUND)
+
+    def do_DELETE(self):
+        if self.path != "/api/v1/session":
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        if not self.authenticated() or not self.same_origin():
+            self.send_json(HTTPStatus.UNAUTHORIZED,
+                           {"error": "authentication_required"})
+            return
+        self.send_json(
+            HTTPStatus.OK,
+            {"authenticated": False},
+            "desk_session=; Max-Age=0",
+        )
 
 
 def main():

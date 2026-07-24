@@ -37,6 +37,21 @@ endif()
 
 enable_testing()
 
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+    NAME test_web_contract
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_web_contract.py
+)
+
+find_program(DESK_NODE_EXECUTABLE node)
+if(DESK_NODE_EXECUTABLE)
+    add_test(
+        NAME test_web_javascript_syntax
+        COMMAND ${DESK_NODE_EXECUTABLE} --check
+                ${CMAKE_CURRENT_SOURCE_DIR}/../main/web/app.js
+    )
+endif()
+
 add_executable(test_position_scale
     test_position_scale.c
     ../main/domain/position_scale.c
