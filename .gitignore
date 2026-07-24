@@ -6,3 +6,5 @@ build_s3/
 tests/build/
 sdkconfig.old
 managed_components/
+__pycache__/
+*.py[cod]
