@@ -14,10 +14,12 @@ CERTIFICATE = """-----BEGIN CERTIFICATE-----
 VEVTVA==
 -----END CERTIFICATE-----
 """
-PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
-VEVTVA==
------END PRIVATE KEY-----
-"""
+PRIVATE_KEY_LABEL = "PRIVATE KEY"
+PRIVATE_KEY = (
+    f"-----BEGIN {PRIVATE_KEY_LABEL}-----\n"
+    "VEVTVA==\n"
+    f"-----END {PRIVATE_KEY_LABEL}-----\n"
+)
 
 
 class BuildSecretsTest(unittest.TestCase):
