@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Static safety and accessibility contracts for the embedded web controller."""
+"""Static interaction and accessibility contracts for the web controller."""
 
 from html.parser import HTMLParser
 from pathlib import Path
@@ -95,6 +95,27 @@ class WebUiSourceTest(unittest.TestCase):
         self.assertIn("SOCKET_CONNECT_TIMEOUT_MS", self.javascript)
         self.assertIn("HEARTBEAT_MS", self.javascript)
         self.assertIn("sendCommand(0)", self.javascript)
+
+    def test_motion_controls_remain_hold_to_run(self):
+        for control_id, action in (
+            ("move-up", "1"),
+            ("move-down", "2"),
+            ("calibrate", "3"),
+        ):
+            marker = f'id="{control_id}"'
+            start = self.html.index(marker)
+            end = self.html.index(">", start)
+            control = self.html[start:end]
+            self.assertIn("hold-control", control)
+            self.assertIn(f'data-action="{action}"', control)
+
+    def test_console_copy_describes_the_desk_instead_of_the_project(self):
+        self.assertIn("Desk position", self.html)
+        self.assertIn("Motion link", self.html)
+        self.assertIn('id="control-reason"', self.html)
+        self.assertNotIn("Three-axis controller", self.html)
+        self.assertNotIn("authenticated remote input", self.html)
+        self.assertNotIn("Signed firmware update", self.html)
 
     def test_layout_defines_mobile_and_reduced_motion_modes(self):
         self.assertIn("@media (max-width: 440px)", self.css)

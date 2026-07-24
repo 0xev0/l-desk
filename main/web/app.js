@@ -20,6 +20,61 @@ const state = {
   confirmResolver: null,
 };
 
+const STATE_LABELS = {
+  safe_start: "Starting",
+  unreferenced: "Needs calibration",
+  idle: "Ready",
+  moving_up: "Moving up",
+  moving_down: "Moving down",
+  calibrating_down: "Calibrating",
+  error: "Stopped",
+};
+
+const ERROR_LABELS = {
+  none: "No fault",
+  emergency_stop: "E-stop engaged",
+  both_buttons: "Up and down were pressed together",
+  alignment_timeout: "Columns did not reach the endstop together",
+  calibration_timeout: "Calibration took too long",
+  limit_conflict: "Conflicting endstop signals",
+  invalid_transition: "Unexpected controller transition",
+  hardware_fault: "Hardware input or output fault",
+  control_loop_overrun: "Control loop missed its deadline",
+  feedback_missing: "A Hall signal is missing",
+  feedback_direction: "A column moved in the wrong direction",
+  feedback_stall: "A column stopped reporting movement",
+  feedback_skew: "Columns moved too far out of level",
+};
+
+const MODE_LABELS = {
+  local: "Buttons",
+  hybrid: "Buttons + phone",
+  mobile: "Phone",
+};
+
+const SOURCE_LABELS = {
+  none: "No active input",
+  local: "Buttons",
+  remote: "Phone",
+};
+
+const MESSAGE_LABELS = {
+  authentication_required: "Enter the device code to continue.",
+  invalid_credentials: "That device code was not accepted.",
+  rate_limited: "Too many attempts. Wait a moment and try again.",
+  request_timeout: "The desk did not respond in time.",
+  control_unavailable: "The desk controller is not responding.",
+  clear_error_forbidden: "The fault cannot be reset in the current state.",
+  clear_error_queue_full: "The reset request could not be queued.",
+  error_not_clearable: "Resolve the reported condition before resetting the fault.",
+  desk_must_be_idle: "Stop the desk before doing that.",
+  desk_must_be_stopped: "Stop the desk before doing that.",
+  invalid_network: "Check the network name and password.",
+  network_apply_failed: "The desk could not apply the Wi-Fi settings.",
+  preset_capture_unsafe: "The current height cannot be saved.",
+  update_rejected: "The firmware file was rejected.",
+};
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const loginDialog = $("#login-dialog");
@@ -30,6 +85,18 @@ function humanize(value) {
   return String(value || "unknown")
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function labelFor(labels, value) {
+  return labels[value] || humanize(value);
+}
+
+function errorLabel(error) {
+  return labelFor(ERROR_LABELS, error);
+}
+
+function messageLabel(message) {
+  return MESSAGE_LABELS[message] || humanize(message);
 }
 
 function showToast(message, isError = false) {
@@ -121,34 +188,35 @@ function resolveConfirmation(accepted) {
 function updateAxis(axis, index) {
   const id = ["a", "b", "c"][index];
   const millimeters = axis.position_um / 1000;
+  const position = Math.max(0, Math.min(100, axis.position_um / 5000));
   $(`#axis-${id}-position`).textContent = `${millimeters.toFixed(1)} mm`;
-  $(`#axis-${id}-level`).style.width =
-    `${Math.max(0, Math.min(100, axis.position_um / 5000))}%`;
+  $(`#axis-${id}-level`).parentElement.style.setProperty("--position", `${position}%`);
   $(`#axis-${id}-lower`).classList.toggle("active", axis.lower);
   $(`#axis-${id}-upper`).classList.toggle("active", axis.upper);
-  $(`#axis-${id}-hall`).textContent = axis.hall_valid ? `Hall ${axis.hall}` : "Hall fault";
+  $(`#axis-${id}-hall`).textContent = axis.hall_valid ? `Hall ${axis.hall}` : "No Hall signal";
+  $(`#axis-${id}-hall`).classList.toggle("active", !axis.hall_valid);
 }
 
 function movementReason(status) {
   if (!state.authenticated) {
-    return "Sign in to enable remote control.";
+    return "Connect to use phone controls.";
   }
   if (status.mode === "local") {
-    return "Remote motion is disabled in Local only mode.";
+    return "Phone control is off. Change the input mode below.";
   }
   if (status.emergency) {
-    return "Release the physical emergency stop and clear the latched error.";
+    return "E-stop is engaged.";
   }
   if (status.error !== "none") {
-    return `Motion is inhibited: ${humanize(status.error)}.`;
+    return errorLabel(status.error);
   }
   if (!status.referenced) {
-    return "Calibrate the desk before normal movement or presets.";
+    return "Calibrate before moving up or using presets.";
   }
   if (status.motion_inhibited) {
-    return "Motion is inhibited while maintenance is active.";
+    return "Firmware maintenance is in progress.";
   }
-  return "Ready. Keep a control held for the entire movement.";
+  return "Ready";
 }
 
 function updateControls(status) {
@@ -184,7 +252,7 @@ function updateControls(status) {
       status.motion_inhibited;
   });
   const ready = canMove;
-  $("#motion-lock").textContent = ready ? "Ready" : "Locked";
+  $("#motion-lock").textContent = ready ? "Ready" : "Blocked";
   $("#motion-lock").classList.toggle("ready", ready);
   $("#control-reason").textContent = movementReason(status);
 }
@@ -193,15 +261,15 @@ function renderStatus(status) {
   state.status = status;
   state.authenticated = true;
   state.authPromptDismissed = false;
-  setIndicator("api", status.wifi_connected ? "WiFi connected" : "Direct connection", "online");
+  setIndicator("api", status.wifi_connected ? "On Wi-Fi" : "Setup network", "online");
   if (state.socket === null) {
-    setIndicator("socket", "Control idle", "idle");
+    setIndicator("socket", "Standby", "idle");
   }
-  $("#last-update").textContent = "Updated just now";
-  $("#session-command").textContent = "Sign out";
-  $("#desk-state").textContent = humanize(status.state);
-  $("#control-source").textContent = humanize(status.source);
-  $("#mode-label").textContent = humanize(status.mode);
+  $("#last-update").textContent = "Updated now";
+  $("#session-command").textContent = "Disconnect";
+  $("#desk-state").textContent = labelFor(STATE_LABELS, status.state);
+  $("#control-source").textContent = labelFor(SOURCE_LABELS, status.source);
+  $("#mode-label").textContent = labelFor(MODE_LABELS, status.mode);
   $("#firmware-version").textContent = `${status.firmware} on ${status.partition}`;
   $("#free-heap").textContent = `${status.diagnostics.free_heap} B`;
   $("#minimum-heap").textContent = `${status.diagnostics.minimum_free_heap} B`;
@@ -213,7 +281,7 @@ function renderStatus(status) {
   $("#desk-height").textContent = status.referenced ? average.toFixed(1) : "--";
   const positions = status.axes.map((axis) => axis.position_um);
   const skew = (Math.max(...positions) - Math.min(...positions)) / 1000;
-  $("#skew-value").textContent = `Skew ${skew.toFixed(1)} mm`;
+  $("#skew-value").textContent = `Level ${skew.toFixed(1)} mm`;
   status.axes.forEach(updateAxis);
   status.presets.forEach((preset, index) => {
     $(`#preset-${index + 1}-height`).textContent =
@@ -225,11 +293,14 @@ function renderStatus(status) {
     status.feedback_warning || status.preset_storage_fault;
   alert.classList.toggle("hidden", !hasAlert);
   if (hasAlert) {
-    $("#alert-title").textContent = status.emergency ? "Emergency stop active" :
-      status.feedback_warning ? "Column skew warning" :
-        status.preset_storage_fault ? "Preset storage unavailable" : "Motion stopped";
-    $("#alert-detail").textContent = status.error === "none" ?
-      "Inspect the reported condition before moving the desk." : humanize(status.error);
+    $("#alert-title").textContent = status.emergency ? "E-stop engaged" :
+      status.feedback_warning ? "Columns out of level" :
+        status.preset_storage_fault ? "Presets unavailable" : "Desk stopped";
+    $("#alert-detail").textContent = status.error !== "none" ?
+      errorLabel(status.error) :
+      status.feedback_warning ? `Column difference is ${skew.toFixed(1)} mm.` :
+        status.preset_storage_fault ? "Saved heights could not be read." :
+          "Resolve the reported condition before moving.";
   }
   $("#provisioning").classList.toggle("hidden", !status.provisioning);
   updateControls(status);
@@ -239,19 +310,19 @@ function renderStatus(status) {
 }
 
 function handleStatusFailure(error) {
-  stopMotion("Control unavailable");
-  setIndicator("api", error.status === 401 ? "Sign in required" : "API unavailable",
+  stopMotion("Unavailable");
+  setIndicator("api", error.status === 401 ? "Code required" : "Not responding",
     error.status === 401 ? "pending" : "offline");
-  $("#last-update").textContent = "Status unavailable";
+  $("#last-update").textContent = "No recent status";
   if (error.status === 401) {
     state.authenticated = false;
-    $("#session-command").textContent = "Sign in";
+    $("#session-command").textContent = "Connect";
     movementButtons.forEach((button) => {
       button.disabled = true;
     });
-    $("#motion-lock").textContent = "Locked";
+    $("#motion-lock").textContent = "Blocked";
     $("#motion-lock").classList.remove("ready");
-    $("#control-reason").textContent = "Sign in to enable remote control.";
+    $("#control-reason").textContent = "Connect to use phone controls.";
     openLogin();
   }
 }
@@ -294,7 +365,7 @@ function sendCommand(action) {
   }
 }
 
-function stopMotion(socketLabel = "Control idle") {
+function stopMotion(socketLabel = "Standby") {
   if (state.socketConnectTimer !== null) {
     clearTimeout(state.socketConnectTimer);
     state.socketConnectTimer = null;
@@ -322,8 +393,8 @@ function beginMotion(button, event) {
     return;
   }
   if (location.protocol !== "https:") {
-    setIndicator("socket", "HTTPS required", "failed");
-    showToast("Remote motion requires HTTPS.", true);
+    setIndicator("socket", "HTTPS needed", "failed");
+    showToast("Open the desk over HTTPS to use phone controls.", true);
     return;
   }
   event.preventDefault();
@@ -332,7 +403,7 @@ function beginMotion(button, event) {
   state.action = Number(button.dataset.action);
   state.sequence = 0;
   button.classList.add("pressed");
-  setIndicator("socket", "Control connecting", "connecting");
+  setIndicator("socket", "Connecting", "connecting");
 
   const socket = new WebSocket(
     `wss://${location.host}/api/v1/control`,
@@ -342,9 +413,9 @@ function beginMotion(button, event) {
   state.socket = socket;
   state.socketConnectTimer = setTimeout(() => {
     if (state.socket === socket && socket.readyState !== WebSocket.OPEN) {
-      setIndicator("socket", "Control timed out", "failed");
-      showToast("The control channel did not connect.", true);
-      stopMotion("Control unavailable");
+      setIndicator("socket", "Timed out", "failed");
+      showToast("The motion link did not connect.", true);
+      stopMotion("Unavailable");
     }
   }, SOCKET_CONNECT_TIMEOUT_MS);
 
@@ -355,25 +426,25 @@ function beginMotion(button, event) {
     }
     clearTimeout(state.socketConnectTimer);
     state.socketConnectTimer = null;
-    setIndicator("socket", "Control live", "live");
+    setIndicator("socket", "Live", "live");
     sendCommand(state.action);
     state.heartbeat = setInterval(() => sendCommand(state.action), HEARTBEAT_MS);
   });
   socket.addEventListener("close", () => {
     if (state.socket === socket) {
       const wasHeld = state.pointerId !== null;
-      stopMotion(wasHeld ? "Control interrupted" : "Control idle");
+      stopMotion(wasHeld ? "Connection lost" : "Standby");
       if (wasHeld) {
-        setIndicator("socket", "Control interrupted", "failed");
-        showToast("Movement stopped because the control channel closed.", true);
+        setIndicator("socket", "Connection lost", "failed");
+        showToast("Movement stopped because the motion link closed.", true);
       }
     }
   });
   socket.addEventListener("error", () => {
     if (state.socket === socket) {
-      setIndicator("socket", "Control failed", "failed");
-      showToast("Unable to open the control channel.", true);
-      stopMotion("Control unavailable");
+      setIndicator("socket", "Unavailable", "failed");
+      showToast("The motion link could not be opened.", true);
+      stopMotion("Unavailable");
     }
   });
 }
@@ -399,9 +470,9 @@ $("#login-form").addEventListener("submit", async (event) => {
     event.currentTarget.reset();
     state.authPromptDismissed = false;
     await pollStatus();
-    showToast("Signed in.");
+    showToast("Connected.");
   } catch (error) {
-    $("#login-error").textContent = humanize(error.message);
+    $("#login-error").textContent = messageLabel(error.message);
   }
 });
 
@@ -419,7 +490,7 @@ $("#session-command").addEventListener("click", async () => {
   }
   state.authenticated = false;
   state.authPromptDismissed = false;
-  $("#session-command").textContent = "Sign in";
+  $("#session-command").textContent = "Connect";
   openLogin(true);
 });
 
@@ -427,9 +498,9 @@ $$(".segments button").forEach((button) => {
   button.addEventListener("click", async () => {
     stopMotion();
     const accepted = await askConfirmation(
-      "Change control mode?",
-      `Switch to ${button.textContent.trim()}. Active remote movement is stopped first.`,
-      "Change mode",
+      "Change control inputs?",
+      `Use ${button.textContent.trim()} for desk movement? Any phone movement stops first.`,
+      "Change inputs",
     );
     if (!accepted) {
       return;
@@ -440,9 +511,9 @@ $$(".segments button").forEach((button) => {
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
         body: new URLSearchParams({mode: button.dataset.mode}),
       });
-      showToast("Control mode updated.");
+      showToast("Control inputs updated.");
     } catch (error) {
-      showToast(humanize(error.message), true);
+      showToast(messageLabel(error.message), true);
     }
     await pollStatus();
   });
@@ -467,7 +538,7 @@ $$(".preset-save").forEach((button) => {
       });
       showToast(`Preset M${slot} saved.`);
     } catch (error) {
-      showToast(humanize(error.message), true);
+      showToast(messageLabel(error.message), true);
     }
     await pollStatus();
   });
@@ -482,17 +553,17 @@ $("#firmware-file").addEventListener("change", () => {
 $("#clear-error").addEventListener("click", async () => {
   stopMotion();
   if (!await askConfirmation(
-    "Clear the latched error?",
-    "The controller will re-check every safety input and return to Safe Start. The desk will not move.",
-    "Clear error",
+    "Reset this fault?",
+    "The desk will check its inputs and return to its startup state. It will stay still.",
+    "Reset fault",
   )) {
     return;
   }
   try {
     await request("/api/v1/error/clear", {method: "POST"});
-    showToast("Clear request accepted. Safety inputs are being checked.");
+    showToast("Fault reset requested.");
   } catch (error) {
-    showToast(humanize(error.message), true);
+    showToast(messageLabel(error.message), true);
   }
   await pollStatus();
 });
@@ -502,7 +573,7 @@ $("#update-firmware").addEventListener("click", async () => {
   const file = $("#firmware-file").files[0];
   if (file === undefined || !await askConfirmation(
     "Install firmware update?",
-    "Motion will remain inhibited while the signed image is checked and installed.",
+    "The desk will stay still while it checks the file, installs it, and restarts.",
     "Install and restart",
   )) {
     return;
@@ -515,11 +586,11 @@ $("#update-firmware").addEventListener("click", async () => {
       headers: {"Content-Type": "application/octet-stream"},
       body: file,
     });
-    setIndicator("api", "Device restarting", "pending");
-    showToast("Update accepted. The controller is restarting.");
+    setIndicator("api", "Restarting", "pending");
+    showToast("Update installed. The desk is restarting.");
   } catch (error) {
     $("#update-progress").classList.add("hidden");
-    showToast(humanize(error.message), true);
+    showToast(messageLabel(error.message), true);
     await pollStatus();
   }
 });
@@ -529,9 +600,9 @@ $("#wifi-form").addEventListener("submit", async (event) => {
   stopMotion();
   const form = new FormData(event.currentTarget);
   if (!await askConfirmation(
-    "Connect to this WiFi network?",
-    "The provisioning access point may close while the controller joins the network.",
-    "Connect",
+    "Join this Wi-Fi network?",
+    "The desk's setup network will close after it connects.",
+    "Join network",
   )) {
     return;
   }
@@ -545,9 +616,9 @@ $("#wifi-form").addEventListener("submit", async (event) => {
       }),
     });
     event.currentTarget.reset();
-    showToast("WiFi credentials accepted. Reconnecting...");
+    showToast("Wi-Fi saved. Reconnecting...");
   } catch (error) {
-    showToast(humanize(error.message), true);
+    showToast(messageLabel(error.message), true);
     await pollStatus();
   }
 });
@@ -594,8 +665,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 if (location.protocol !== "https:") {
-  setIndicator("api", "HTTPS required", "failed");
-  $("#control-reason").textContent = "Open this controller over HTTPS.";
+  setIndicator("api", "HTTPS needed", "failed");
+  $("#control-reason").textContent = "Open this page over HTTPS to connect.";
 } else {
   pollStatus();
 }

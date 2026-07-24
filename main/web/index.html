@@ -3,112 +3,125 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#171a1d">
-  <title>L-Desk Control</title>
+  <meta name="theme-color" content="#202421">
+  <title>L-Desk</title>
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">L</span>
-      <div>
-        <p class="eyebrow">Three-axis controller</p>
-        <h1>L-Desk</h1>
+    <div class="topbar-inner">
+      <div class="brand" aria-label="L-Desk">
+        <span class="brand-mark" aria-hidden="true">L</span>
+        <div>
+          <h1>L-Desk</h1>
+          <p>Desk control</p>
+        </div>
       </div>
+
+      <div class="connection-rack" aria-label="Connection status" aria-live="polite">
+        <div class="connection-item">
+          <span>Device</span>
+          <strong><i id="api-dot" class="status-dot pending"></i><span id="api-status">Connecting</span></strong>
+        </div>
+        <div class="connection-item">
+          <span>Motion link</span>
+          <strong><i id="socket-dot" class="status-dot idle"></i><span id="socket-status">Standby</span></strong>
+        </div>
+        <span id="last-update" class="last-update">Waiting for status</span>
+      </div>
+
+      <button id="session-command" class="quiet-command" type="button">Connect</button>
     </div>
-    <button id="session-command" class="quiet-command" type="button">Sign in</button>
   </header>
 
-  <div class="connection-bar" aria-live="polite">
-    <span class="connection-item">
-      <i class="status-dot secure"></i>
-      <span>HTTPS</span>
-    </span>
-    <span class="connection-item">
-      <i id="api-dot" class="status-dot pending"></i>
-      <span id="api-status">Checking API</span>
-    </span>
-    <span class="connection-item">
-      <i id="socket-dot" class="status-dot idle"></i>
-      <span id="socket-status">Control idle</span>
-    </span>
-    <span id="last-update" class="last-update">No status received</span>
-  </div>
-
   <main>
-    <section class="status-band" aria-label="Desk status">
-      <div>
-        <span class="label">State</span>
+    <section class="status-deck" aria-label="Desk status">
+      <div class="state-block">
+        <span class="label">Desk</span>
         <strong id="desk-state">Unavailable</strong>
       </div>
-      <div class="height-status">
+      <div class="height-block">
         <span class="label">Height</span>
-        <strong><span id="desk-height">--</span><small> mm</small></strong>
+        <strong><span id="desk-height">--</span><small>mm</small></strong>
       </div>
-      <div>
-        <span class="label">Command source</span>
-        <strong id="control-source">None</strong>
-      </div>
-      <div>
-        <span class="label">Control mode</span>
-        <strong id="mode-label">--</strong>
-      </div>
+      <dl class="status-facts">
+        <div>
+          <dt>Input</dt>
+          <dd id="control-source">None</dd>
+        </div>
+        <div>
+          <dt>Mode</dt>
+          <dd id="mode-label">--</dd>
+        </div>
+      </dl>
     </section>
 
     <section id="alert" class="alert hidden" role="alert">
-      <div class="alert-symbol" aria-hidden="true">!</div>
+      <span class="alert-symbol" aria-hidden="true">!</span>
       <div>
-        <strong id="alert-title">Motion stopped</strong>
+        <strong id="alert-title">Desk stopped</strong>
         <p id="alert-detail"></p>
       </div>
-      <button id="clear-error" class="alert-command" type="button">Clear error</button>
+      <button id="clear-error" class="alert-command" type="button">Reset fault</button>
     </section>
 
-    <div class="control-layout">
-      <section class="axis-panel" aria-labelledby="axes-title">
+    <div class="workbench">
+      <section class="position-panel" aria-labelledby="axes-title">
         <header class="section-heading">
           <div>
-            <span class="label">Position feedback</span>
-            <h2 id="axes-title">Columns</h2>
+            <span class="label">Live position</span>
+            <h2 id="axes-title">Desk position</h2>
           </div>
-          <span id="skew-value" class="metric">Skew --</span>
+          <span id="skew-value" class="metric">Level --</span>
         </header>
+
         <div class="axes">
           <article class="axis">
             <header>
-              <span class="axis-name">A</span>
+              <span class="axis-name">Column A</span>
               <strong id="axis-a-position">-- mm</strong>
             </header>
-            <div class="travel" aria-hidden="true"><span id="axis-a-level"></span></div>
-            <footer>
-              <span id="axis-a-lower">MIN</span>
-              <span id="axis-a-hall">Hall --</span>
-              <span id="axis-a-upper">MAX</span>
-            </footer>
+            <div class="column-scale">
+              <span id="axis-a-upper" class="limit upper">TOP</span>
+              <div class="column-track" aria-hidden="true">
+                <span id="axis-a-level" class="column-fill"></span>
+                <i class="column-carriage"></i>
+              </div>
+              <span id="axis-a-lower" class="limit lower">BOTTOM</span>
+            </div>
+            <footer id="axis-a-hall">Hall --</footer>
           </article>
+
           <article class="axis">
             <header>
-              <span class="axis-name">B</span>
+              <span class="axis-name">Column B</span>
               <strong id="axis-b-position">-- mm</strong>
             </header>
-            <div class="travel" aria-hidden="true"><span id="axis-b-level"></span></div>
-            <footer>
-              <span id="axis-b-lower">MIN</span>
-              <span id="axis-b-hall">Hall --</span>
-              <span id="axis-b-upper">MAX</span>
-            </footer>
+            <div class="column-scale">
+              <span id="axis-b-upper" class="limit upper">TOP</span>
+              <div class="column-track" aria-hidden="true">
+                <span id="axis-b-level" class="column-fill"></span>
+                <i class="column-carriage"></i>
+              </div>
+              <span id="axis-b-lower" class="limit lower">BOTTOM</span>
+            </div>
+            <footer id="axis-b-hall">Hall --</footer>
           </article>
+
           <article class="axis">
             <header>
-              <span class="axis-name">C</span>
+              <span class="axis-name">Column C</span>
               <strong id="axis-c-position">-- mm</strong>
             </header>
-            <div class="travel" aria-hidden="true"><span id="axis-c-level"></span></div>
-            <footer>
-              <span id="axis-c-lower">MIN</span>
-              <span id="axis-c-hall">Hall --</span>
-              <span id="axis-c-upper">MAX</span>
-            </footer>
+            <div class="column-scale">
+              <span id="axis-c-upper" class="limit upper">TOP</span>
+              <div class="column-track" aria-hidden="true">
+                <span id="axis-c-level" class="column-fill"></span>
+                <i class="column-carriage"></i>
+              </div>
+              <span id="axis-c-lower" class="limit lower">BOTTOM</span>
+            </div>
+            <footer id="axis-c-hall">Hall --</footer>
           </article>
         </div>
       </section>
@@ -116,54 +129,60 @@
       <section class="motion-panel" aria-labelledby="motion-title">
         <header class="section-heading">
           <div>
-            <span class="label">Hold to run</span>
-            <h2 id="motion-title">Movement</h2>
+            <span class="label">Phone control</span>
+            <h2 id="motion-title">Move desk</h2>
           </div>
-          <span id="motion-lock" class="lock-state">Locked</span>
+          <span id="motion-lock" class="lock-state">Blocked</span>
         </header>
+
+        <p id="control-reason" class="control-reason" aria-live="polite">
+          Connect to use phone controls.
+        </p>
+
         <div class="controls">
           <button id="move-up" class="motion hold-control" type="button" data-action="1"
-                  aria-label="Raise desk">
-            <span aria-hidden="true">&#8593;</span>
-            <small>Raise</small>
+                  aria-label="Hold to raise desk">
+            <span class="motion-arrow" aria-hidden="true">&#8593;</span>
+            <span class="motion-label"><strong>Up</strong><small>Hold</small></span>
           </button>
           <button id="move-down" class="motion hold-control" type="button" data-action="2"
-                  aria-label="Lower desk">
-            <span aria-hidden="true">&#8595;</span>
-            <small>Lower</small>
+                  aria-label="Hold to lower desk">
+            <span class="motion-arrow" aria-hidden="true">&#8595;</span>
+            <span class="motion-label"><strong>Down</strong><small>Hold</small></span>
           </button>
         </div>
+
         <button id="calibrate" class="calibrate hold-control" type="button" data-action="3">
-          <strong>CAL</strong>
-          <span>Hold to calibrate down</span>
+          <span class="calibrate-mark" aria-hidden="true">0</span>
+          <span><strong>Calibrate</strong><small>Hold to find the lower reference</small></span>
         </button>
-        <p id="control-reason" class="control-reason">Sign in to enable remote control.</p>
       </section>
     </div>
 
     <section class="preset-panel" aria-labelledby="presets-title">
       <header class="section-heading">
         <div>
-          <span class="label">Hold to run</span>
+          <span class="label">Saved heights</span>
           <h2 id="presets-title">Presets</h2>
         </div>
+        <span class="section-note">Hold M1, M2, or M3 to move</span>
       </header>
       <div class="presets">
         <article>
           <button class="preset-motion hold-control" type="button" data-slot="0"
-                  data-action="4" aria-label="Move to preset 1">M1</button>
+                  data-action="4" aria-label="Hold to move to preset 1">M1</button>
           <div><strong id="preset-1-height">--</strong><span>Preset 1</span></div>
           <button class="preset-save" type="button" data-slot="0">Save</button>
         </article>
         <article>
           <button class="preset-motion hold-control" type="button" data-slot="1"
-                  data-action="5" aria-label="Move to preset 2">M2</button>
+                  data-action="5" aria-label="Hold to move to preset 2">M2</button>
           <div><strong id="preset-2-height">--</strong><span>Preset 2</span></div>
           <button class="preset-save" type="button" data-slot="1">Save</button>
         </article>
         <article>
           <button class="preset-motion hold-control" type="button" data-slot="2"
-                  data-action="6" aria-label="Move to preset 3">M3</button>
+                  data-action="6" aria-label="Hold to move to preset 3">M3</button>
           <div><strong id="preset-3-height">--</strong><span>Preset 3</span></div>
           <button class="preset-save" type="button" data-slot="2">Save</button>
         </article>
@@ -172,27 +191,27 @@
 
     <details class="settings-panel">
       <summary>
-        <span><span class="label">Configuration</span><strong>Control and network</strong></span>
+        <span><span class="label">Setup</span><strong>Inputs &amp; Wi-Fi</strong></span>
         <span class="disclosure" aria-hidden="true">+</span>
       </summary>
       <div class="settings-content">
         <section>
           <header class="subheading">
             <div>
-              <h3>Control mode</h3>
-              <p>Physical buttons are optional. Hybrid accepts local and authenticated remote input.</p>
+              <h3>Control inputs</h3>
+              <p>Choose which controls can move the desk.</p>
             </div>
           </header>
-          <div class="segments" role="group" aria-label="Control mode">
-            <button type="button" data-mode="local">Local only</button>
-            <button type="button" data-mode="hybrid">Hybrid</button>
-            <button type="button" data-mode="mobile">Remote only</button>
+          <div class="segments" role="group" aria-label="Control inputs">
+            <button type="button" data-mode="local">Buttons</button>
+            <button type="button" data-mode="hybrid">Buttons + phone</button>
+            <button type="button" data-mode="mobile">Phone</button>
           </div>
         </section>
 
         <section id="provisioning" class="provisioning hidden">
           <header class="subheading">
-            <div><h3>WiFi provisioning</h3><p>Credentials are stored on this device.</p></div>
+            <div><h3>Join home Wi-Fi</h3><p>The desk will leave its setup network after connecting.</p></div>
           </header>
           <form id="wifi-form">
             <label>Network name
@@ -216,28 +235,29 @@
 
     <details class="settings-panel">
       <summary>
-        <span><span class="label">Maintenance</span><strong>Diagnostics and firmware</strong></span>
+        <span><span class="label">Maintenance</span><strong>Device &amp; firmware</strong></span>
         <span class="disclosure" aria-hidden="true">+</span>
       </summary>
       <div class="settings-content maintenance-grid">
         <section>
-          <header class="subheading"><div><h3>Runtime</h3><p id="firmware-version">--</p></div></header>
+          <header class="subheading"><div><h3>Device status</h3><p id="firmware-version">--</p></div></header>
           <dl class="diagnostics">
             <div><dt>Free heap</dt><dd id="free-heap">--</dd></div>
-            <div><dt>Minimum heap</dt><dd id="minimum-heap">--</dd></div>
+            <div><dt>Lowest heap</dt><dd id="minimum-heap">--</dd></div>
             <div><dt>Dropped logs</dt><dd id="dropped-logs">--</dd></div>
-            <div><dt>Reset reason</dt><dd id="reset-reason">--</dd></div>
+            <div><dt>Last restart</dt><dd id="reset-reason">--</dd></div>
           </dl>
         </section>
         <section class="firmware-update">
           <header class="subheading">
-            <div><h3>Signed firmware update</h3><p>Only a compatible signed binary is accepted.</p></div>
+            <div><h3>Firmware update</h3><p>Select a signed .bin built for this desk.</p></div>
           </header>
           <div class="update-controls">
             <input id="firmware-file" type="file" accept=".bin,application/octet-stream">
             <button id="update-firmware" class="primary-command" type="button" disabled>Install</button>
           </div>
-          <div id="update-progress" class="progress hidden" role="progressbar" aria-label="Firmware update">
+          <div id="update-progress" class="progress hidden" role="progressbar"
+               aria-label="Firmware update">
             <span></span>
           </div>
         </section>
@@ -248,20 +268,21 @@
   <dialog id="login-dialog">
     <form id="login-form">
       <header class="dialog-heading">
-        <div><p class="eyebrow">Device access</p><h2>Sign in to L-Desk</h2></div>
+        <div><p class="eyebrow">Phone control</p><h2>Connect to L-Desk</h2></div>
         <button class="dialog-close" type="button" data-close-dialog="login-dialog"
-                aria-label="Close sign in">&times;</button>
+                aria-label="Close">&times;</button>
       </header>
-      <label>Administration token
+      <label>Device code
         <input name="token" inputmode="text" minlength="32" maxlength="32"
                pattern="[0-9a-fA-F]{32}" required autocomplete="off">
       </label>
+      <p class="field-note">Enter the 32-character code created for this desk.</p>
       <p id="login-error" class="form-error" aria-live="polite"></p>
       <div class="dialog-actions">
         <button class="secondary-command" type="button" data-close-dialog="login-dialog">
-          Not now
+          Cancel
         </button>
-        <button class="primary-command" type="submit">Sign in</button>
+        <button class="primary-command" type="submit">Connect</button>
       </div>
     </form>
   </dialog>
@@ -269,7 +290,7 @@
   <dialog id="confirm-dialog">
     <form id="confirm-form">
       <header class="dialog-heading">
-        <div><p class="eyebrow">Confirm action</p><h2 id="confirm-title">Continue?</h2></div>
+        <div><p class="eyebrow">Check action</p><h2 id="confirm-title">Continue?</h2></div>
         <button class="dialog-close" type="button" data-confirm="cancel"
                 aria-label="Cancel">&times;</button>
       </header>
