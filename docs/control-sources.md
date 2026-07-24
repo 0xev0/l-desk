@@ -16,8 +16,9 @@ UP, DOWN, and CALIBRATE buttons, but it does not permit omitting the physical
 E-stop or NC endstops. Unconnected active-low button inputs remain released
 through their configured pull-ups.
 
-The compile-time default is `HYBRID`. Persistent selection will be added with
-the configuration store; until then it returns to `HYBRID` after reboot.
+The first-boot default is `HYBRID`. The selected mode is validated and
+persisted in NVS, then applied through the same bounded control queue after
+reboot.
 
 ## Remote Lease
 
@@ -60,7 +61,7 @@ GPIO, PWM, enable, or per-axis commands.
 ## Transport Boundary
 
 The command arbiter and its tests do not depend on WiFi, BLE, HTTP, WebSocket,
-JSON, or ESP-IDF. A future transport may only enqueue:
+JSON, or ESP-IDF. The current HTTP/WebSocket transport may only enqueue:
 
 - acquire remote lease;
 - high-level UP, DOWN, CALIBRATE, or STOP;
@@ -104,6 +105,7 @@ does not choose or transmit motor IDs. Wrong size, version, type, action,
 sequence, TTL, or reserved bits is rejected before anything reaches the
 application queue.
 
-The WiFi lifecycle alone does not expose motor control. Remote movement remains
-unavailable until the authenticated HTTP/WebSocket service, session ownership,
-disconnect revocation, and mobile client pass their integration gates.
+Remote movement is exposed only through the authenticated HTTP/WebSocket
+service. Session ownership, same-origin checks, one-client exclusivity,
+disconnect revocation, and the mobile client all sit above the unchanged
+safety controller.

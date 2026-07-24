@@ -29,16 +29,16 @@ Implemented:
 - Runtime minimum-free-heap and dropped-log diagnostics for soak testing
 - Tested local/hybrid/mobile-only command arbiter with exclusive 250 ms leases
 - Versioned WiFi credentials in NVS with STA and recovery SoftAP infrastructure
+- Authenticated responsive mobile UI and binary hold-to-run WebSocket control
 - Injectable HAL, host fake, watchdog, strict warnings, ASan, and UBSan tests
 - Deliberate error clear: hold CALIBRATE for 2 seconds, then release
 
-The authenticated HTTP/WebSocket transport and mobile web UI are not connected
-yet; the host-tested application boundary, bounded control queue, credential
-store, and WiFi lifecycle are in place. See [control
-sources](docs/control-sources.md).
+The local HTTP/WebSocket transport, bounded control queue, credential store,
+WiFi lifecycle, and mobile web controller are connected. See [network
+control](docs/networking.md) and [control sources](docs/control-sources.md).
 
-Not implemented: presets, automatic positioning, mobile HTTP/WebSocket API,
-display, BLE, Home Assistant, or OTA.
+Not implemented: presets, automatic positioning, display, BLE, Home Assistant,
+or OTA.
 
 ## Target Hardware
 

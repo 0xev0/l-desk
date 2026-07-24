@@ -16,6 +16,12 @@ static esp_err_t start_provisioning(esp_wifi_service_t *service)
     if (result == ESP_OK) {
         service->provisioning_active = true;
         ESP_LOGW(TAG, "provisioning AP active: SSID=%s", service->provisioning_ssid);
+        ESP_LOGW(TAG, "provisioning password: %s",
+                 service->store->provisioning_ap_password);
+        char admin_secret[DESK_AUTH_SECRET_TEXT_SIZE];
+        if (desk_auth_format_secret(service->store->admin_secret, admin_secret)) {
+            ESP_LOGW(TAG, "device administration token: %s", admin_secret);
+        }
     }
     return result;
 }
@@ -184,4 +190,34 @@ esp_err_t esp_wifi_service_init(esp_wifi_service_t *service, esp_network_store_t
 
     service->initialized = true;
     return ESP_OK;
+}
+
+esp_err_t esp_wifi_service_apply_credentials(esp_wifi_service_t *service)
+{
+    if (service == NULL || !service->initialized || service->store == NULL ||
+        !service->store->has_wifi_credentials) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    wifi_mode_t current_mode;
+    esp_err_t result = esp_wifi_get_mode(&current_mode);
+    if (result == ESP_OK) {
+        result = configure_station(service->store);
+    }
+    if (result == ESP_OK) {
+        result = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    }
+    if (result == ESP_OK) {
+        service->provisioning_active = true;
+        service->connect_retries = 0U;
+        if (current_mode == WIFI_MODE_APSTA || current_mode == WIFI_MODE_STA) {
+            esp_err_t disconnect_result = esp_wifi_disconnect();
+            if (disconnect_result != ESP_OK &&
+                disconnect_result != ESP_ERR_WIFI_NOT_CONNECT) {
+                return disconnect_result;
+            }
+            result = esp_wifi_connect();
+        }
+    }
+    return result;
 }

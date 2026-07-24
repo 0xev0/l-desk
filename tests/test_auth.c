@@ -174,6 +174,35 @@ static void duplicate_session_random_is_rejected(void)
         desk_authenticator_login(&authenticator, admin_hex, random, 1U, session_hex));
 }
 
+static void short_and_overlong_secret_text_is_rejected_before_decoding(void)
+{
+    uint8_t admin[DESK_AUTH_SECRET_BYTES];
+    uint8_t random[DESK_AUTH_SECRET_BYTES];
+    fill_secret(admin, 1U);
+    fill_secret(random, 60U);
+    desk_authenticator_t authenticator;
+    desk_authenticator_init(&authenticator, admin);
+    char session_hex[DESK_AUTH_SECRET_TEXT_SIZE];
+
+    const char short_text[] = "a";
+    TEST_ASSERT_EQUAL_INT(
+        DESK_AUTH_LOGIN_DENIED,
+        desk_authenticator_login(&authenticator, short_text, random, 0U, session_hex));
+    TEST_ASSERT_FALSE(desk_authenticator_validate_session(&authenticator, short_text, 0U));
+    TEST_ASSERT_FALSE(desk_authenticator_logout(&authenticator, short_text));
+
+    char long_text[DESK_AUTH_SECRET_TEXT_SIZE + 1U];
+    for (size_t index = 0U; index < sizeof(long_text) - 1U; ++index) {
+        long_text[index] = 'a';
+    }
+    long_text[sizeof(long_text) - 1U] = '\0';
+    TEST_ASSERT_EQUAL_INT(
+        DESK_AUTH_LOGIN_DENIED,
+        desk_authenticator_login(&authenticator, long_text, random, 1U, session_hex));
+    TEST_ASSERT_FALSE(desk_authenticator_validate_session(&authenticator, long_text, 1U));
+    TEST_ASSERT_FALSE(desk_authenticator_logout(&authenticator, long_text));
+}
+
 int main(void)
 {
     successful_login_creates_and_validates_bounded_session();
@@ -182,5 +211,6 @@ int main(void)
     sessions_have_fixed_capacity_and_logout_is_explicit();
     invalid_initialization_random_and_arguments_fail_closed();
     duplicate_session_random_is_rejected();
+    short_and_overlong_secret_text_is_rejected_before_decoding();
     return 0;
 }

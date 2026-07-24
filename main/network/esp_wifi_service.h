@@ -24,3 +24,4 @@ typedef struct {
 } esp_wifi_service_t;
 
 esp_err_t esp_wifi_service_init(esp_wifi_service_t *service, esp_network_store_t *store);
+esp_err_t esp_wifi_service_apply_credentials(esp_wifi_service_t *service);

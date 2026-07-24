@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17191c">
+  <title>L-Desk Control</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">THREE AXIS CONTROL</p>
+      <h1>L-Desk</h1>
+    </div>
+    <div class="connection">
+      <span id="connection-dot" class="dot offline"></span>
+      <span id="connection-label">Offline</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="status-band" aria-live="polite">
+      <div>
+        <span class="label">Estado</span>
+        <strong id="desk-state">--</strong>
+      </div>
+      <div>
+        <span class="label">Altura</span>
+        <strong><span id="desk-height">--</span> mm</strong>
+      </div>
+      <div>
+        <span class="label">Control</span>
+        <strong id="control-source">--</strong>
+      </div>
+    </section>
+
+    <section id="alert" class="alert hidden" role="alert">
+      <strong id="alert-title">Detenido</strong>
+      <span id="alert-detail"></span>
+    </section>
+
+    <section class="axes" aria-label="Columnas">
+      <article class="axis">
+        <header><span>A</span><strong id="axis-a-position">-- mm</strong></header>
+        <div class="travel"><span id="axis-a-level"></span></div>
+        <footer><span id="axis-a-lower">MIN</span><span id="axis-a-upper">MAX</span></footer>
+      </article>
+      <article class="axis">
+        <header><span>B</span><strong id="axis-b-position">-- mm</strong></header>
+        <div class="travel"><span id="axis-b-level"></span></div>
+        <footer><span id="axis-b-lower">MIN</span><span id="axis-b-upper">MAX</span></footer>
+      </article>
+      <article class="axis">
+        <header><span>C</span><strong id="axis-c-position">-- mm</strong></header>
+        <div class="travel"><span id="axis-c-level"></span></div>
+        <footer><span id="axis-c-lower">MIN</span><span id="axis-c-upper">MAX</span></footer>
+      </article>
+    </section>
+
+    <section class="controls" aria-label="Movimiento">
+      <button id="move-up" class="motion" type="button" data-action="1"
+              aria-label="Subir">
+        <span aria-hidden="true">&#8593;</span>
+        <small>SUBIR</small>
+      </button>
+      <button id="calibrate" class="calibrate" type="button" data-action="3">
+        <span>CAL</span>
+        <small>CALIBRAR</small>
+      </button>
+      <button id="move-down" class="motion" type="button" data-action="2"
+              aria-label="Bajar">
+        <span aria-hidden="true">&#8595;</span>
+        <small>BAJAR</small>
+      </button>
+    </section>
+
+    <section class="settings">
+      <header>
+        <div>
+          <span class="label">Modo de control</span>
+          <strong id="mode-label">--</strong>
+        </div>
+        <button id="logout" class="icon-command" type="button">Salir</button>
+      </header>
+      <div class="segments" role="group" aria-label="Modo de control">
+        <button type="button" data-mode="local">Local</button>
+        <button type="button" data-mode="hybrid">Hibrido</button>
+        <button type="button" data-mode="mobile">Movil</button>
+      </div>
+    </section>
+
+    <section id="provisioning" class="provisioning hidden">
+      <header>
+        <span class="label">Red</span>
+        <strong>Configurar WiFi</strong>
+      </header>
+      <form id="wifi-form">
+        <label>SSID<input name="ssid" maxlength="32" required autocomplete="username"></label>
+        <label>Contrasena<input name="password" type="password" minlength="8"
+               maxlength="64" required autocomplete="current-password"></label>
+        <button type="submit">Conectar</button>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="login-dialog">
+    <form id="login-form" method="dialog">
+      <p class="eyebrow">DEVICE ACCESS</p>
+      <h2>L-Desk</h2>
+      <label>Token del dispositivo
+        <input name="token" inputmode="text" minlength="32" maxlength="32"
+               pattern="[0-9a-fA-F]{32}" required autocomplete="off">
+      </label>
+      <p id="login-error" class="form-error"></p>
+      <button type="submit">Entrar</button>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

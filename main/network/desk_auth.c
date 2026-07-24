@@ -37,6 +37,14 @@ static bool parse_secret(const char *text, uint8_t secret[DESK_AUTH_SECRET_BYTES
     if (text == NULL || secret == NULL) {
         return false;
     }
+    size_t text_length = 0U;
+    while (text_length <= DESK_AUTH_SECRET_HEX_LENGTH &&
+           text[text_length] != '\0') {
+        ++text_length;
+    }
+    if (text_length != DESK_AUTH_SECRET_HEX_LENGTH) {
+        return false;
+    }
 
     bool valid = true;
     for (size_t index = 0U; index < DESK_AUTH_SECRET_BYTES; ++index) {
@@ -44,7 +52,7 @@ static bool parse_secret(const char *text, uint8_t secret[DESK_AUTH_SECRET_BYTES
         uint8_t low = decode_nibble(text[index * 2U + 1U], &valid);
         secret[index] = (uint8_t)((high << 4U) | low);
     }
-    return valid && text[DESK_AUTH_SECRET_HEX_LENGTH] == '\0';
+    return valid;
 }
 
 static bool secrets_equal(const uint8_t left[DESK_AUTH_SECRET_BYTES],

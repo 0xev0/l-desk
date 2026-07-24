@@ -24,7 +24,7 @@ P1/P2 become release-ready together only after final hardware commissioning.
 
 ## P2.5: Control-Source Foundation
 
-Status: implemented and host/build verified; HTTP/WebSocket transport pending.
+Status: implemented and host/build verified.
 
 - Local-only, hybrid, and mobile-only operating modes
 - Exclusive remote lease with sequence anti-replay and 250 ms expiry
@@ -52,7 +52,7 @@ Start only after P1/P2 pass sustained loaded use.
 
 - Implemented foundation: validated NVS credentials, WiFi STA, first-boot
   protected SoftAP, and recovery SoftAP after bounded connection failures
-- In progress: authenticated local HTTP/WebSocket API and installable mobile
+- Implemented: authenticated local HTTP/WebSocket API and responsive mobile
   web UI
 - BLE provisioning and local configuration
 - WiFi STA plus MQTT/TLS telemetry for Home Assistant
