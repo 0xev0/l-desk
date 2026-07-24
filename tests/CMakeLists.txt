@@ -47,6 +47,18 @@ target_include_directories(test_position_scale PRIVATE
 
 add_test(NAME test_position_scale COMMAND test_position_scale)
 
+add_executable(test_bts7960_sequence
+    test_bts7960_sequence.c
+    ../main/hal/bts7960_sequence.c
+    ../main/domain/motor_axis.c
+)
+target_include_directories(test_bts7960_sequence PRIVATE
+    ../main/hal
+    ../main/domain
+)
+
+add_test(NAME test_bts7960_sequence COMMAND test_bts7960_sequence)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c

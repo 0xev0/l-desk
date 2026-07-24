@@ -3,8 +3,8 @@
 #include <stddef.h>
 
 #include "board_config.h"
+#include "bts7960_sequence.h"
 #include "driver/gpio.h"
-#include "motor_axis.h"
 
 static esp_err_t set_pwm(ledc_channel_t channel, uint32_t duty)
 {
@@ -12,7 +12,7 @@ static esp_err_t set_pwm(ledc_channel_t channel, uint32_t duty)
     return result == ESP_OK ? ledc_update_duty(LEDC_LOW_SPEED_MODE, channel) : result;
 }
 
-static esp_err_t stop_outputs(bts7960_driver_t *driver)
+static esp_err_t force_stop_outputs(bts7960_driver_t *driver)
 {
     esp_err_t first_error = gpio_set_level((gpio_num_t)driver->enable_pin, 0);
     esp_err_t result = set_pwm(driver->rpwm_channel, 0U);
@@ -25,6 +25,37 @@ static esp_err_t stop_outputs(bts7960_driver_t *driver)
     }
     driver->applied_direction = MOTOR_COMMAND_STOP;
     return first_error;
+}
+
+static uint32_t duty_permille_to_raw(uint16_t duty_permille)
+{
+    return ((uint32_t)duty_permille * MOTOR_PWM_MAX_DUTY) / 1000U;
+}
+
+static esp_err_t execute_operation(bts7960_driver_t *driver,
+                                   const bts7960_operation_t *operation)
+{
+    switch (operation->kind) {
+    case BTS7960_OPERATION_SET_ENABLE:
+        return gpio_set_level((gpio_num_t)driver->enable_pin, operation->value != 0U ? 1 : 0);
+    case BTS7960_OPERATION_SET_RPWM:
+        return set_pwm(driver->rpwm_channel, duty_permille_to_raw(operation->value));
+    case BTS7960_OPERATION_SET_LPWM:
+        return set_pwm(driver->lpwm_channel, duty_permille_to_raw(operation->value));
+    }
+    return ESP_ERR_INVALID_ARG;
+}
+
+static esp_err_t execute_sequence(bts7960_driver_t *driver,
+                                  const bts7960_sequence_t *sequence)
+{
+    for (size_t index = 0U; index < sequence->count; ++index) {
+        esp_err_t result = execute_operation(driver, &sequence->operations[index]);
+        if (result != ESP_OK) {
+            return result;
+        }
+    }
+    return ESP_OK;
 }
 
 esp_err_t bts7960_driver_init(bts7960_driver_t *driver)
@@ -78,7 +109,7 @@ esp_err_t bts7960_driver_init(bts7960_driver_t *driver)
 
     driver->initialized = true;
     driver->applied_direction = MOTOR_COMMAND_STOP;
-    return stop_outputs(driver);
+    return force_stop_outputs(driver);
 }
 
 esp_err_t bts7960_driver_stop(bts7960_driver_t *driver)
@@ -86,7 +117,24 @@ esp_err_t bts7960_driver_stop(bts7960_driver_t *driver)
     if (driver == NULL || !driver->initialized) {
         return ESP_ERR_INVALID_STATE;
     }
-    return stop_outputs(driver);
+    return force_stop_outputs(driver);
+}
+
+esp_err_t bts7960_driver_self_check(const bts7960_driver_t *driver,
+                                    const desk_axis_output_t *expected_command)
+{
+    if (driver == NULL || !driver->initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    bts7960_snapshot_t snapshot = {
+        .enable_active = gpio_get_level((gpio_num_t)driver->enable_pin) != 0,
+        .rpwm_duty = ledc_get_duty(LEDC_LOW_SPEED_MODE, driver->rpwm_channel),
+        .lpwm_duty = ledc_get_duty(LEDC_LOW_SPEED_MODE, driver->lpwm_channel),
+    };
+    return bts7960_snapshot_matches(expected_command, &snapshot, MOTOR_PWM_MAX_DUTY)
+               ? ESP_OK
+               : ESP_FAIL;
 }
 
 esp_err_t bts7960_driver_apply(bts7960_driver_t *driver, const desk_axis_output_t *command)
@@ -94,38 +142,25 @@ esp_err_t bts7960_driver_apply(bts7960_driver_t *driver, const desk_axis_output_
     if (driver == NULL || !driver->initialized) {
         return ESP_ERR_INVALID_STATE;
     }
-    if (!motor_axis_command_is_valid(command)) {
-        (void)stop_outputs(driver);
+
+    bts7960_sequence_t sequence;
+    if (!bts7960_sequence_build(driver->applied_direction, command, &sequence)) {
+        (void)force_stop_outputs(driver);
         return ESP_ERR_INVALID_ARG;
     }
-    if (command->direction == MOTOR_COMMAND_STOP) {
-        return stop_outputs(driver);
-    }
 
-    if (driver->applied_direction != command->direction) {
-        esp_err_t result = stop_outputs(driver);
-        if (result != ESP_OK) {
-            return result;
-        }
-    }
-
-    uint32_t duty = ((uint32_t)command->duty_permille * MOTOR_PWM_MAX_DUTY) / 1000U;
-    ledc_channel_t active_channel =
-        command->direction == MOTOR_COMMAND_UP ? driver->rpwm_channel : driver->lpwm_channel;
-    ledc_channel_t inactive_channel =
-        command->direction == MOTOR_COMMAND_UP ? driver->lpwm_channel : driver->rpwm_channel;
-    esp_err_t result = set_pwm(inactive_channel, 0U);
-    if (result == ESP_OK) {
-        result = set_pwm(active_channel, duty);
-    }
-    if (result == ESP_OK) {
-        result = gpio_set_level((gpio_num_t)driver->enable_pin, 1);
-    }
+    esp_err_t result = execute_sequence(driver, &sequence);
     if (result != ESP_OK) {
-        (void)stop_outputs(driver);
+        (void)force_stop_outputs(driver);
         return result;
     }
 
-    driver->applied_direction = command->direction;
+    result = bts7960_driver_self_check(driver, command);
+    if (result != ESP_OK) {
+        (void)force_stop_outputs(driver);
+        return ESP_FAIL;
+    }
+
+    driver->applied_direction = sequence.resulting_direction;
     return ESP_OK;
 }

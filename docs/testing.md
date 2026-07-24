@@ -2,8 +2,8 @@
 
 ## Host Suite
 
-Twelve CTest executables cover domain, application, input filtering, fake HAL,
-and output invariants without ESP-IDF hardware.
+Thirteen CTest executables cover domain, application, input filtering, fake HAL,
+BTS7960 sequencing, and output invariants without ESP-IDF hardware.
 
 ```sh
 cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
@@ -46,6 +46,7 @@ line coverage at or above 95% and all safety transitions explicitly tested.
 - Immediate safety activation and filtered release bounce
 - Hall missing, wrong direction, stall, warning trim, and hard skew
 - Invalid time, arguments, configuration, and motor output vectors
+- BTS7960 STOP/start/reversal ordering and output-register readback invariants
 - Explicit long-hold/release error clear without automatic motion
 - Deterministic repeated ticks and saturating timing arithmetic
 

@@ -58,7 +58,7 @@ checks state/error coherence, duty range, STOP de-energization, and direction
 compatibility. `esp_gpio_hal_apply_outputs()` validates all three commands before
 applying any axis. A later driver error triggers best-effort STOP on every axis.
 
-The BTS7960 sequence is:
+The platform executes a host-tested BTS7960 operation sequence:
 
 1. Enable LOW.
 2. RPWM and LPWM duty zero.
@@ -66,8 +66,11 @@ The BTS7960 sequence is:
 4. Active direction duty set.
 5. Enable HIGH.
 
-Domain dead time is 300 ms. The driver also forces STOP whenever its applied
-direction changes, but does not replace domain timing.
+After every command, the driver reads the GPIO enable level and both LEDC duty
+registers back. Any mismatch forces STOP and propagates a platform fault to the
+application. Domain dead time is 300 ms. The driver also forces STOP whenever
+its applied direction changes, but does not replace domain timing or prove that
+an external BTS7960 module obeyed its logic inputs.
 
 ## Hall Feedback
 
