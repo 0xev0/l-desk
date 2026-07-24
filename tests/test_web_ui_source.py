@@ -8,6 +8,9 @@ import unittest
 
 
 WEB_ROOT = Path(__file__).resolve().parents[1] / "main" / "web"
+HTTP_API = (
+    Path(__file__).resolve().parents[1] / "main" / "platform" / "esp_http_api.c"
+)
 
 
 class UiParser(HTMLParser):
@@ -36,6 +39,7 @@ class WebUiSourceTest(unittest.TestCase):
         cls.html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
         cls.css = (WEB_ROOT / "app.css").read_text(encoding="utf-8")
         cls.javascript = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        cls.http_api = HTTP_API.read_text(encoding="utf-8")
         cls.parser = UiParser()
         cls.parser.feed(cls.html)
 
@@ -67,6 +71,16 @@ class WebUiSourceTest(unittest.TestCase):
         self.assertIn("`wss://${location.host}/api/v1/control`", self.javascript)
         self.assertNotIn('location.protocol === "https:" ? "wss" : "ws"', self.javascript)
         self.assertNotIn("`ws://${", self.javascript)
+
+    def test_browser_security_policy_is_same_origin_and_has_no_unsafe_script_mode(self):
+        self.assertIn("connect-src 'self'", self.http_api)
+        self.assertIn("script-src 'self'", self.http_api)
+        self.assertIn("frame-ancestors 'none'", self.http_api)
+        self.assertNotIn("connect-src 'self' wss:", self.http_api)
+        self.assertNotIn("unsafe-inline", self.http_api)
+        self.assertNotIn("unsafe-eval", self.http_api)
+        self.assertNotIn("localStorage", self.javascript)
+        self.assertNotIn("sessionStorage", self.javascript)
 
     def test_remote_motion_has_release_and_transport_fail_safes(self):
         for event in (

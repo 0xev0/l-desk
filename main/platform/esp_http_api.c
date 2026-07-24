@@ -54,7 +54,7 @@ static esp_err_t set_security_headers(httpd_req_t *request)
     }
     if (result == ESP_OK) {
         result = httpd_resp_set_hdr(request, "Content-Security-Policy",
-                                    "default-src 'self'; connect-src 'self' wss:; img-src 'self'; "
+                                    "default-src 'self'; connect-src 'self'; img-src 'self'; "
                                     "style-src 'self'; script-src 'self'; object-src 'none'; "
                                     "base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     }
