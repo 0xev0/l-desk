@@ -69,12 +69,6 @@ done
     exit 2
 }
 
-idf_activate="${IDF_ACTIVATE:-/Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh}"
-[[ -f "$idf_activate" ]] || {
-    echo "ESP-IDF activation script not found: $idf_activate" >&2
-    exit 2
-}
-
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 generated_dir="$repo_root/main/generated"
 generated_secrets="$generated_dir/desk_build_secrets.inc"
@@ -116,10 +110,21 @@ if [[ -n "$admin_token" ]]; then
 fi
 python3 "$repo_root/tools/generate_build_secrets.py" "${generator_arguments[@]}"
 
-set -a
-eval "$("$idf_activate" -e)"
-PATH="$PATH:$SYSTEM_PATH"
-set +a
+if [[ -z "${IDF_PATH:-}" ]] || ! command -v idf.py >/dev/null 2>&1; then
+    idf_activate="${IDF_ACTIVATE:-/Users/4rkh4m/.espressif/tools/activate_idf_v6.0.sh}"
+    [[ -f "$idf_activate" ]] || {
+        echo "ESP-IDF 6.0 is not active and its activation script was not found" >&2
+        exit 2
+    }
+    set -a
+    eval "$("$idf_activate" -e)"
+    PATH="$PATH:$SYSTEM_PATH"
+    set +a
+fi
+[[ -n "${IDF_PATH:-}" && -f "$IDF_PATH/tools/idf.py" ]] || {
+    echo "ESP-IDF 6.0 environment is incomplete" >&2
+    exit 2
+}
 
 cmake -E remove_directory "$release_dir"
 python "$IDF_PATH/tools/idf.py" \

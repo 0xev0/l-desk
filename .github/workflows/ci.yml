@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Host safety suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install host toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang cmake llvm ninja-build nodejs
+
+      - name: Configure
+        env:
+          CC: clang
+        run: |
+          cmake -S tests -B build-host -G Ninja \
+            -DDESK_ENABLE_SANITIZERS=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build-host --parallel
+
+      - name: Test with ASan and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          ctest --test-dir build-host --output-on-failure \
+            --output-junit "$PWD/build-host/test-results.xml"
+
+      - name: Publish dynamic test summary
+        run: |
+          python3 tools/render_test_badge.py \
+            --junit build-host/test-results.xml \
+            --output /tmp/test-status.svg \
+            --summary "$GITHUB_STEP_SUMMARY"
+          cmp docs/test-status.svg /tmp/test-status.svg
+
+      - name: Configure coverage instrumentation
+        env:
+          CC: clang
+        run: |
+          cmake -S tests -B build-coverage -G Ninja \
+            -DDESK_ENABLE_COVERAGE=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Enforce line coverage
+        run: |
+          cmake --build build-coverage --parallel
+          mkdir -p "$PWD/build-coverage/profiles"
+          LLVM_PROFILE_FILE="$PWD/build-coverage/profiles/%m-%p.profraw" \
+            ctest --test-dir build-coverage --output-on-failure
+          llvm-profdata merge -sparse build-coverage/profiles/*.profraw \
+            -o build-coverage/coverage.profdata
+          mapfile -t objects < <(
+            find build-coverage -maxdepth 1 -type f -executable -name 'test_*' |
+              sort
+          )
+          test "${#objects[@]}" -gt 0
+          extra_objects=()
+          for object in "${objects[@]:1}"; do
+            extra_objects+=(--object "$object")
+          done
+          llvm-cov export "${objects[0]}" "${extra_objects[@]}" \
+            -instr-profile=build-coverage/coverage.profdata \
+            -ignore-filename-regex='(/tests/|/usr/)' \
+            > build-coverage/coverage.json
+          python3 tools/check_coverage.py \
+            --input build-coverage/coverage.json \
+            --minimum-lines 95 \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce architecture boundaries
+        run: |
+          ! grep -R -n -E \
+            '#include[[:space:]]+[<"](driver/|freertos/|esp_|nvs_|lwip/)' \
+            main/app main/diagnostics main/domain main/hal main/network
+          ! grep -R -n -E \
+            'gpio_(get|set)|vTaskDelay|(^|[^[:alnum:]_])(malloc|calloc|realloc|free)[[:space:]]*\(' \
+            main/app main/diagnostics main/domain main/hal main/network
+
+      - name: Upload test result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: host-test-results
+          path: build-host/test-results.xml
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload coverage result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: host-coverage
+          path: build-coverage/coverage.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  firmware:
+    name: ESP-IDF 6.0 secure profile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: espressif/idf:v6.0
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Generate ephemeral CI transport credentials
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/desk-ci-tls.key \
+            -out /tmp/desk-ci-tls.crt \
+            -subj "/CN=desk-ci.invalid" \
+            -days 8
+          python3 tools/generate_build_secrets.py \
+            --certificate /tmp/desk-ci-tls.crt \
+            --private-key /tmp/desk-ci-tls.key \
+            --output main/generated/desk_build_secrets.inc \
+            --credentials-output /tmp/desk-ci-credentials.txt
+
+      - name: Configure secure production profile
+        run: |
+          idf.py -B build-ci \
+            -D "SDKCONFIG=build-ci/sdkconfig" \
+            -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.release.defaults" \
+            set-target esp32s3
+
+      - name: Build firmware with warnings as errors
+        run: idf.py -B build-ci build
+
+      - name: Record image sizes
+        run: idf.py -B build-ci size
