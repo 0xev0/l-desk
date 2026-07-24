@@ -379,6 +379,75 @@ static void mobile_only_can_clear_an_error_without_physical_buttons(void)
     assert_outputs_stopped(fake.outputs);
 }
 
+static void remote_preset_is_hold_to_run_and_latches_stop_at_target(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = app_test_config();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    TEST_ASSERT_FALSE(desk_app_set_preset_target(NULL, 0U, 100000, 500000));
+    TEST_ASSERT_FALSE(desk_app_set_preset_target(&app, DESK_PRESET_COUNT, 100000, 500000));
+    TEST_ASSERT_TRUE(desk_app_set_preset_target(&app, 0U, 200000, 500000));
+    run_steps(&app, &fake, 52U);
+
+    const uint64_t lease_id = 222U;
+    TEST_ASSERT_TRUE(desk_app_acquire_remote_lease(&app, lease_id));
+    TEST_ASSERT_TRUE(desk_app_submit_remote_command(
+        &app,
+        &(desk_remote_command_t){
+            .lease_id = lease_id,
+            .sequence = 1U,
+            .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+            .action = DESK_CONTROL_ACTION_PRESET_1,
+        }));
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, fake.outputs.state);
+
+    for (size_t axis = 0U; axis < DESK_AXIS_COUNT; ++axis) {
+        fake.inputs.axis[axis].position_um = 199000;
+        fake.inputs.axis[axis].hall_count = 100;
+    }
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+    TEST_ASSERT_TRUE(app.preset_controller.target_reached);
+
+    for (size_t axis = 0U; axis < DESK_AXIS_COUNT; ++axis) {
+        fake.inputs.axis[axis].position_um = 180000;
+    }
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+}
+
+static void preset_motion_is_inhibited_without_a_position_reference(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = desk_config_default();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    TEST_ASSERT_TRUE(desk_app_set_preset_target(&app, 0U, 200000, 500000));
+    run_steps(&app, &fake, 52U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_UNREFERENCED, fake.outputs.state);
+
+    TEST_ASSERT_TRUE(desk_app_acquire_remote_lease(&app, 333U));
+    TEST_ASSERT_TRUE(desk_app_submit_remote_command(
+        &app,
+        &(desk_remote_command_t){
+            .lease_id = 333U,
+            .sequence = 1U,
+            .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+            .action = DESK_CONTROL_ACTION_PRESET_1,
+        }));
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_UNREFERENCED, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+}
+
 int main(void)
 {
     app_runs_through_injected_platform();
@@ -392,5 +461,7 @@ int main(void)
     mode_changes_cancel_remote_motion_and_local_only_rejects_network();
     transport_disconnect_stops_only_its_active_lease();
     mobile_only_can_clear_an_error_without_physical_buttons();
+    remote_preset_is_hold_to_run_and_latches_stop_at_target();
+    preset_motion_is_inhibited_without_a_position_reference();
     return 0;
 }

@@ -24,6 +24,45 @@ static bool platform_is_complete(const desk_platform_t *platform)
            platform->service_watchdog != NULL && platform->now_ms != NULL;
 }
 
+static bool preset_slot_from_action(desk_control_action_t action, size_t *slot)
+{
+    switch (action) {
+    case DESK_CONTROL_ACTION_PRESET_1:
+        *slot = 0U;
+        return true;
+    case DESK_CONTROL_ACTION_PRESET_2:
+        *slot = 1U;
+        return true;
+    case DESK_CONTROL_ACTION_PRESET_3:
+        *slot = 2U;
+        return true;
+    case DESK_CONTROL_ACTION_STOP:
+    case DESK_CONTROL_ACTION_UP:
+    case DESK_CONTROL_ACTION_DOWN:
+    case DESK_CONTROL_ACTION_CALIBRATE:
+        return false;
+    }
+    return false;
+}
+
+static void apply_preset_action(desk_app_t *app, const desk_resolved_controls_t *controls,
+                                desk_inputs_t *inputs)
+{
+    size_t slot;
+    if (!preset_slot_from_action(controls->action, &slot)) {
+        desk_preset_controller_reset(&app->preset_controller);
+        return;
+    }
+
+    motor_command_t direction = MOTOR_COMMAND_STOP;
+    bool valid = desk_preset_controller_update(
+        &app->preset_controller, &app->presets, slot, inputs,
+        app->last_outputs.position_reference_valid, &direction);
+    inputs->up_pressed = valid && direction == MOTOR_COMMAND_UP;
+    inputs->down_pressed = valid && direction == MOTOR_COMMAND_DOWN;
+    inputs->calibrate_pressed = false;
+}
+
 static void update_clear_error_request(desk_app_t *app, const desk_inputs_t *inputs,
                                        uint64_t now_ms)
 {
@@ -112,6 +151,7 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     inputs.up_pressed = controls.up_pressed;
     inputs.down_pressed = controls.down_pressed;
     inputs.calibrate_pressed = controls.calibrate_pressed;
+    apply_preset_action(app, &controls, &inputs);
     app->last_control_source = controls.source;
     app->remote_control_active = controls.remote_active;
     app->last_inputs = inputs;
@@ -151,6 +191,19 @@ bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode)
     return desk_command_arbiter_set_mode(&app->command_arbiter, mode);
 }
 
+bool desk_app_set_preset_target(desk_app_t *app, size_t slot, int32_t target_um,
+                                int32_t maximum_travel_um)
+{
+    if (app == NULL || !app->initialized ||
+        !desk_preset_bank_set(&app->presets, slot, target_um, maximum_travel_um)) {
+        return false;
+    }
+    if (app->preset_controller.active && app->preset_controller.slot == slot) {
+        desk_preset_controller_reset(&app->preset_controller);
+    }
+    return true;
+}
+
 bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id)
 {
     if (app == NULL || !app->initialized) {
@@ -186,7 +239,9 @@ bool desk_app_get_status(const desk_app_t *app, desk_app_status_t *status)
         .outputs = app->last_outputs,
         .control_mode = app->command_arbiter.mode,
         .control_source = app->last_control_source,
+        .presets = app->presets,
         .remote_control_active = app->remote_control_active,
+        .preset_target_reached = app->preset_controller.target_reached,
     };
     return true;
 }

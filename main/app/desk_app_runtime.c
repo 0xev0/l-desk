@@ -13,6 +13,7 @@ typedef enum {
     DESK_RUNTIME_REQUEST_REMOTE_RELEASE,
     DESK_RUNTIME_REQUEST_REMOTE_COMMAND,
     DESK_RUNTIME_REQUEST_CONTROL_MODE,
+    DESK_RUNTIME_REQUEST_PRESET_TARGET,
 } desk_runtime_request_kind_t;
 
 typedef struct {
@@ -20,6 +21,8 @@ typedef struct {
     uint64_t remote_lease_id;
     desk_remote_command_t remote_command;
     desk_control_mode_t control_mode;
+    size_t preset_slot;
+    int32_t preset_target_um;
 } desk_runtime_request_t;
 
 typedef struct {
@@ -73,6 +76,11 @@ static void process_control_requests(desk_app_runtime_t *desk_runtime)
             break;
         case DESK_RUNTIME_REQUEST_CONTROL_MODE:
             (void)desk_app_set_control_mode(&desk_runtime->app, request.control_mode);
+            break;
+        case DESK_RUNTIME_REQUEST_PRESET_TARGET:
+            (void)desk_app_set_preset_target(&desk_runtime->app, request.preset_slot,
+                                             request.preset_target_um,
+                                             (int32_t)BOARD_ACTUATOR_TRAVEL_UM);
             break;
         }
     }
@@ -210,5 +218,14 @@ bool desk_app_queue_control_mode(desk_control_mode_t mode)
     return queue_runtime_request(&(desk_runtime_request_t){
         .kind = DESK_RUNTIME_REQUEST_CONTROL_MODE,
         .control_mode = mode,
+    });
+}
+
+bool desk_app_queue_preset_target(size_t slot, int32_t target_um)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_PRESET_TARGET,
+        .preset_slot = slot,
+        .preset_target_um = target_um,
     });
 }

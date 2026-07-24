@@ -229,6 +229,7 @@ add_executable(test_desk_app
     ../main/app/desk_app.c
     ../main/app/desk_command_arbiter.c
     ../main/app/desk_input_filter.c
+    ../main/app/desk_preset_controller.c
     ../main/domain/desk_controller.c
 )
 target_include_directories(test_desk_app PRIVATE
