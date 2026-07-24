@@ -21,8 +21,7 @@ static bool platform_is_complete(const desk_platform_t *platform)
 {
     return platform != NULL && platform->initialize != NULL && platform->read_inputs != NULL &&
            platform->apply_outputs != NULL && platform->zero_hall_counts != NULL &&
-           platform->service_watchdog != NULL && platform->now_ms != NULL &&
-           platform->delay_ms != NULL;
+           platform->service_watchdog != NULL && platform->now_ms != NULL;
 }
 
 static void update_clear_error_request(desk_app_t *app, const desk_inputs_t *inputs,

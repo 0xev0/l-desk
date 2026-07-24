@@ -25,6 +25,8 @@ Implemented:
 - Deliberate calibration required after boot before normal movement
 - PWM trim of the leading axis and hard stop at the configured skew threshold
 - 750 ms endstop alignment window for all three arrival orders
+- Static pinned control task and bounded asynchronous platform logging
+- Runtime minimum-free-heap and dropped-log diagnostics for soak testing
 - Injectable HAL, host fake, watchdog, strict warnings, ASan, and UBSan tests
 - Deliberate error clear: hold CALIBRATE for 2 seconds, then release
 

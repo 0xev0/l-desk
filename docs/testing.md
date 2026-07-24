@@ -66,4 +66,7 @@ undefined-macro warnings.
 Host tests cannot prove GPIO voltage, clone BTS timing, PCNT noise immunity,
 contactor wiring, thermal margin, Hall scale, actuator mismatch, EMC behavior,
 or mechanical skew. Complete the progressive tests in `commissioning.md` and
-record minimum free heap during the 8 hour soak.
+record the exposed current/minimum free heap, task stack high-water marks, and
+dropped-log counters during the 8 hour soak. Confirm that the statically
+allocated control task maintains its 10 ms cadence while diagnostics are being
+emitted.

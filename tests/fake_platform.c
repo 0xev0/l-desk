@@ -55,14 +55,6 @@ static bool service_watchdog(void *context)
     return fake != NULL && !fake->fail_watchdog;
 }
 
-static void delay_ms(void *context, uint32_t delay)
-{
-    fake_platform_t *fake = context;
-    if (fake != NULL) {
-        fake->now_ms += delay;
-    }
-}
-
 static void log_transition(void *context, const desk_outputs_t *previous,
                            const desk_outputs_t *current)
 {
@@ -92,7 +84,6 @@ desk_platform_t fake_platform_interface(fake_platform_t *fake)
         .zero_hall_counts = zero_hall_counts,
         .service_watchdog = service_watchdog,
         .now_ms = now_ms,
-        .delay_ms = delay_ms,
         .log_transition = log_transition,
         .context = fake,
     };

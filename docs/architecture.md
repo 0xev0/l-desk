@@ -4,7 +4,7 @@
 
 ```text
 app_main
-  -> desk_app_run (ESP runtime loop)
+  -> static pinned desk_control task
   -> desk_app_step (platform-independent orchestration)
   -> desk_controller_tick (pure domain)
   -> normalized desk_outputs_t
@@ -32,6 +32,13 @@ Every nominal 10 ms iteration:
 
 An interval above 50 ms, clock rollback, read/write failure, Hall failure, or
 watchdog service failure becomes a latched hardware/control error.
+
+The control task is statically allocated, pinned to core 1, and scheduled with
+`vTaskDelayUntil()` so processing time does not accumulate as timer drift.
+Logging is copied into a bounded static queue and emitted by a low-priority
+task on core 0. A full logging queue drops diagnostics rather than delaying
+motor control; the dropped-record count, current/minimum free heap, and task
+stack high-water marks remain available through runtime diagnostics.
 
 ## State Machine
 
