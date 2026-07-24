@@ -35,7 +35,9 @@ static void invalid_commands_fail_safe(void)
 {
     const desk_axis_output_t invalid[] = {
         {MOTOR_COMMAND_STOP, 1U, false},
+        {MOTOR_COMMAND_STOP, 0U, true},
         {MOTOR_COMMAND_UP, 0U, true},
+        {MOTOR_COMMAND_UP, 500U, false},
         {MOTOR_COMMAND_DOWN, 1001U, true},
         {(motor_command_t)99, 500U, true},
     };
@@ -46,6 +48,51 @@ static void invalid_commands_fail_safe(void)
         TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&output));
     }
     TEST_ASSERT_FALSE(motor_axis_command_is_valid(NULL));
+}
+
+static void physical_output_checks_reject_unsafe_and_incoherent_states(void)
+{
+    TEST_ASSERT_FALSE(motor_axis_output_is_safe(NULL));
+    TEST_ASSERT_FALSE(motor_axis_output_is_safe(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .lpwm_active = true,
+        .enable_active = true,
+        .duty_permille = 500U,
+    }));
+    TEST_ASSERT_FALSE(motor_axis_output_is_safe(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .enable_active = true,
+        .duty_permille = 1001U,
+    }));
+
+    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .enable_active = true,
+        .duty_permille = 500U,
+    }));
+    TEST_ASSERT_TRUE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .lpwm_active = true,
+        .enable_active = true,
+        .duty_permille = 500U,
+    }));
+    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(NULL));
+    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .lpwm_active = true,
+        .enable_active = true,
+        .duty_permille = 500U,
+    }));
+    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .enable_active = true,
+    }));
+    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .duty_permille = 500U,
+    }));
+    TEST_ASSERT_FALSE(motor_axis_output_is_coherent(&(motor_axis_output_t){
+        .rpwm_active = true,
+        .enable_active = true,
+    }));
 }
 
 static void complete_output_vector_is_checked_before_hardware(void)
@@ -70,12 +117,36 @@ static void complete_output_vector_is_checked_before_hardware(void)
     }
     TEST_ASSERT_TRUE(desk_outputs_are_coherent(&outputs));
     TEST_ASSERT_FALSE(desk_outputs_are_coherent(NULL));
+
+    outputs.state = (desk_state_t)(DESK_STATE_ERROR + 1);
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(&outputs));
+    outputs = (desk_outputs_t){
+        .state = DESK_STATE_UNREFERENCED,
+        .error = DESK_ERROR_NONE,
+    };
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = command(MOTOR_COMMAND_STOP, 0U, false);
+    }
+    TEST_ASSERT_TRUE(desk_outputs_are_coherent(&outputs));
+
+    outputs.state = DESK_STATE_MOVING_DOWN;
+    outputs.motor[DESK_AXIS_FRONT_LEFT] = command(MOTOR_COMMAND_UP, 500U, true);
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(&outputs));
+    outputs.state = DESK_STATE_CALIBRATING_DOWN;
+    TEST_ASSERT_FALSE(desk_outputs_are_coherent(&outputs));
+
+    outputs.state = DESK_STATE_MOVING_DOWN;
+    for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
+        outputs.motor[axis] = command(MOTOR_COMMAND_DOWN, 500U, true);
+    }
+    TEST_ASSERT_TRUE(desk_outputs_are_coherent(&outputs));
 }
 
 int main(void)
 {
     valid_commands_map_to_safe_outputs();
     invalid_commands_fail_safe();
+    physical_output_checks_reject_unsafe_and_incoherent_states();
     complete_output_vector_is_checked_before_hardware();
     return 0;
 }
