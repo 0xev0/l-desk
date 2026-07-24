@@ -52,21 +52,22 @@ Local UP plus DOWN remains a latched controller error. A local action that
 arrives during remote movement revokes the remote lease; direction reversal
 still passes through the normal STOP and 300 ms dead time.
 
-Remote calibration and remote error clear use the same CALIBRATE hold/release
-gesture as the physical button. This is necessary for a buttonless
-installation, but remains subject to authentication, heartbeat expiry, healthy
-safety inputs, and the domain state machine. The transport never submits raw
-GPIO, PWM, enable, or per-axis commands.
+Remote calibration uses the same leased CALIBRATE hold/release behavior as the
+physical button. The authenticated clear-error endpoint queues only a semantic
+request; the controller revalidates healthy inputs, returns to `SAFE_START`,
+and never moves. The transport never submits raw GPIO, PWM, enable, or per-axis
+commands.
 
 ## Transport Boundary
 
-The command arbiter and its tests do not depend on WiFi, BLE, HTTP, WebSocket,
-JSON, or ESP-IDF. The current HTTP/WebSocket transport may only enqueue:
+The command arbiter and its tests do not depend on WiFi, BLE, HTTPS, WebSocket,
+JSON, or ESP-IDF. The current HTTPS/WSS transport may only enqueue:
 
 - acquire remote lease;
 - high-level UP, DOWN, CALIBRATE, or STOP;
 - high-level hold-to-run M1, M2, or M3;
-- select an allowed control mode.
+- select an allowed control mode;
+- request a safety-validated error clear.
 
 Network parsing, authentication, provisioning, rate limits, and client
 ownership remain outside the control task. The ESP-IDF WiFi backend runs as a
@@ -84,8 +85,8 @@ minute. Sessions disappear on reboot and can be logged out explicitly.
 WiFi SSID and PSK are validated with fixed maximum lengths and persisted as one
 versioned NVS blob, so a power loss cannot commit half of a credential pair.
 The selected control mode and three presets are stored separately. Presets use
-a versioned fixed-size record with CRC and bounds checks. NVS encryption is not
-enabled; physical flash access can recover credentials and tokens.
+a versioned fixed-size record with CRC and bounds checks. The production
+profile protects NVS keys through flash encryption.
 
 ## WebSocket Command Frame
 
@@ -106,7 +107,7 @@ does not choose or transmit motor IDs. Wrong size, version, type, action,
 sequence, TTL, or reserved bits is rejected before anything reaches the
 application queue.
 
-Remote movement is exposed only through the authenticated HTTP/WebSocket
+Remote movement is exposed only through the authenticated HTTPS/WSS
 service. Session ownership, same-origin checks, one-client exclusivity,
 disconnect revocation, and the mobile client all sit above the unchanged
 safety controller.

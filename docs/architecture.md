@@ -70,8 +70,9 @@ stack high-water marks remain available through runtime diagnostics.
   synchronization trim, limits, and alignment timeout.
 - `CALIBRATING_DOWN`: explicit 2 second CALIBRATE hold; each axis stops at its
   lower limit and Hall counters are zeroed only after all three arrive.
-- `ERROR`: latched STOP. Hold CALIBRATE for 2 seconds and release with all inputs
-  healthy to return to `SAFE_START`.
+- `ERROR`: latched STOP. A deliberate local hold/release or authenticated
+  semantic clear request revalidates healthy inputs and returns to
+  `SAFE_START`.
 
 CALIBRATE release aborts calibration. UP plus DOWN, E-stop, limit conflict,
 feedback faults, invalid transition, loop overrun, and hardware failures latch

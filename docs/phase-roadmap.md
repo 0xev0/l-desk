@@ -30,7 +30,7 @@ Status: implemented and host/build verified.
 - Exclusive remote lease with sequence anti-replay and 250 ms expiry
 - Local preemption revokes the remote session
 - Bounded static cross-core request queue
-- Remote high-level calibration/error-clear gesture for buttonless operation
+- Remote high-level calibration and safety-validated error clear
 
 ## P3: Presets
 
@@ -51,20 +51,21 @@ the final DevKit are pending.
 - Bounded CRC-protected reset/error history in a dedicated NVS partition
 - Runtime heap, stack high-water, and dropped-log diagnostics
 - A/B app partitions, rollback metadata, coredump partition, and recovery docs
-- Signed RSA-3072 app verification on OTA without burning Secure Boot eFuses
+- RSA Secure Boot v2 and signed application verification
+- Release-mode flash encryption, encrypted NVS, and anti-rollback
 - Motion inhibit before update and held-control release interlock after failure
 - Pending image confirmation requires stopped control and network startup
-- Hardware Secure Boot remains deliberately disabled for homelab recovery
+- Restricted ROM download mode retains a controlled recovery path
 
 ## P5A: WiFi Mobile Control
 
 Status: implemented and host/build verified; RF and phone testing pending.
 
 - Validated NVS credentials, WiFi STA, protected first-boot/recovery SoftAP
-- Authenticated local HTTP/WebSocket API and responsive mobile web UI
+- Authenticated local HTTPS/WSS API and responsive mobile web UI
 - Local, hybrid, and buttonless mobile-only modes
 - Exclusive lease, anti-replay sequence, 100 ms heartbeat, 250 ms expiry
-- Remote calibration/error clear uses the same deliberate hold/release gesture
+- Remote calibration is hold-to-run; error clear returns safely to `SAFE_START`
 - No raw motor, GPIO, per-axis, or unattended motion command
 - Network failure never affects local safety operation
 

@@ -2,14 +2,16 @@
 
 ## Host Suite
 
-Twenty-five CTest gates cover domain, application, input filtering, fake HAL,
-BTS7960 sequencing, network codecs/security, the mobile HTTP contract, web
-JavaScript syntax, and output invariants without ESP-IDF hardware.
+CTest gates cover domain, application, input filtering, fake HAL, BTS7960
+sequencing, network codecs/security, the mobile HTTPS contract, web source and
+JavaScript syntax, release-secret generation, quality reporting, and output
+invariants without ESP-IDF hardware. The count and passing percentage are
+generated from JUnit output instead of duplicated in documentation.
 
 ```sh
 cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
 cmake --build build-host --parallel
-ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 \
+ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
   ctest --test-dir build-host --output-on-failure
 ```
 
@@ -30,11 +32,12 @@ LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
   ctest --test-dir build-coverage --output-on-failure
 ```
 
-Merge with `llvm-profdata` and report with `llvm-cov` over
-all host-testable domain, application, and output-sequencing modules. The
-current result is 96.96% lines, 85.94% branches, and 100% functions.
-Keep line coverage at or above 95% and all safety transitions
-explicitly tested.
+Merge with `llvm-profdata` and report with `llvm-cov` over all host-testable
+domain, application, and output-sequencing modules. CI calculates the result
+from profile data. Keep line coverage at or above 95%, retain complete
+function coverage in safety-critical modules, and test every safety transition
+explicitly. Linux CI enables LeakSanitizer; Apple ASan runtimes that lack it
+still run AddressSanitizer and UndefinedBehaviorSanitizer.
 
 ## Covered Behavior
 

@@ -1,92 +1,118 @@
 # Local Network Control
 
-## Startup and Provisioning
+## Startup and Buttonless Provisioning
 
-The control task starts before networking. A network, NVS, HTTP, or WiFi
-failure is logged but does not stop local safety control.
+The control task starts before networking. NVS, HTTPS, or WiFi failure cannot
+bypass local safety control; it only makes remote control unavailable.
 
-On first boot, the ESP32 creates a WPA2 SoftAP named `Desk-XXXXXX`. The serial
-console prints:
+Every production image receives a unique 128-bit administration secret and TLS
+certificate/key during the offline build. The generated credential record
+contains:
 
-- the generated SoftAP password;
-- the 128-bit device administration token.
+- the administration token;
+- the derived WPA2 provisioning password;
+- no private signing or TLS key.
 
-Open `http://192.168.4.1/`, authenticate with the device token, and submit the
-target SSID and password. Credentials are bounded, decoded without heap
-allocation, validated, and committed as one versioned NVS blob. The SoftAP
-remains available while STA connects and is disabled after the station obtains
-an IP address.
+No credential is printed on UART. Store the record offline with the device.
 
-After ten failed station connections, the protected SoftAP returns as a
-recovery path. WiFi power saving is disabled because remote hold-to-run uses a
-100 ms heartbeat with a 250 ms hard expiry.
+With no station credentials, the ESP32 creates `Desk-XXXXXX`. Join it with the
+provisioning password, open the HTTPS address covered by the device
+certificate, sign in, and submit the target SSID/password. Credentials are
+bounded, validated, and committed as one versioned encrypted NVS record.
+
+After ten failed station connections, the protected provisioning AP returns as
+a recovery path. WiFi power saving remains disabled because remote hold-to-run
+uses a 100 ms heartbeat with a 250 ms expiry.
+
+UP, DOWN, and CALIBRATE inputs have pull-ups. If those optional buttons are not
+connected they read released, allowing `SAFE_START` to complete. First boot
+defaults to `HYBRID`, so the same device can be commissioned entirely from the
+web console.
+
+## HTTPS Trust Models
+
+The firmware accepts HTTPS/WSS only and requires exact
+`Origin: https://<Host>` matching for every state-changing request and control
+WebSocket.
+
+Choose one deployment:
+
+### Direct Private CA
+
+Issue a long-lived certificate for the desk's stable local DNS name (and, if
+needed, provisioning IP) from a private CA trusted by the phone. Keep the CA
+private key off the ESP32. The per-device leaf key is embedded only in its
+flash-encrypted firmware.
+
+### Reverse Proxy with Let's Encrypt
+
+Use Caddy, Nginx, or an equivalent LAN reverse proxy:
+
+```text
+phone -- public CA HTTPS/WSS --> reverse proxy
+      -- private CA HTTPS/WSS --> isolated ESP32
+```
+
+The proxy owns the public DNS name and renews the Let's Encrypt certificate.
+It must preserve `Host`, `Origin`, cookies, binary WebSocket frames, upgrade
+headers, and connection close events. Never terminate TLS into plaintext
+HTTP, never bypass authentication, and never expose the ESP32 directly to the
+Internet.
+
+Baking a short-lived Let's Encrypt certificate into firmware would require
+frequent signed firmware updates and is not the supported renewal model.
+Let's Encrypt also does not issue `localhost` certificates.
 
 ## Authentication
 
-There is no default administration password. The device creates a random
-128-bit token once and stores it in NVS. Login exchanges this token for an
-`HttpOnly`, `SameSite=Strict` RAM session cookie valid for at most eight hours.
-At most four sessions exist; five failed logins block attempts for one minute.
+Login exchanges the 128-bit administration token for an `HttpOnly`, `Secure`,
+`SameSite=Strict` RAM cookie valid for at most eight hours. At most four
+sessions exist. Five failed logins block new attempts for one minute.
 
-Mutating HTTP requests and the WebSocket handshake require an exact
-`Origin: http://<Host>` match. Cookie parsing rejects malformed, duplicate, or
-oversized values. Browser assets use a restrictive Content Security Policy,
-frame denial, MIME sniffing denial, and no-store responses.
-
-The current local API is HTTP, not HTTPS. WPA2 protects first-boot SoftAP
-traffic, but the home LAN is still a trust boundary: do not expose port 80 to
-the Internet or an untrusted VLAN. A hostile LAN client able to sniff traffic
-can steal the token/session and issue authenticated requests. Signed OTA
-prevents that client from installing an untrusted image, but does not encrypt
-control traffic. Put the desk on a trusted WPA2/WPA3 LAN or isolated IoT VLAN.
+Cookie parsing rejects malformed, duplicate, or oversized values. Assets and
+API responses use no-store, CSP, frame denial, MIME-sniffing denial,
+referrer/permissions restrictions, and same-origin isolation headers.
+Sessions disappear on reboot and logout expires the cookie.
 
 ## Mobile Web Controller
 
-The ESP32 serves a responsive controller at `/`. It supports:
+The embedded responsive console exposes:
 
-- three-axis status, endstops, reference state, error, and height;
-- hold-to-run UP, DOWN, and CALIBRATE;
-- capture and hold-to-run M1/M2/M3 presets;
-- local, hybrid, and mobile-only modes;
-- WiFi provisioning while all motors are stopped;
-- signed firmware upload while a maintenance STOP inhibit is active.
+- HTTPS, API session, and control WebSocket status independently;
+- desk state, height, skew, Hall counts, and each endstop;
+- hold-to-run UP, DOWN, CALIBRATE, and M1/M2/M3;
+- local, hybrid, and remote-only modes;
+- safe error clear back to `SAFE_START`;
+- WiFi provisioning, diagnostics, and signed OTA;
+- cancelable dialogs, time-bounded requests, and visible errors.
 
-Each press opens one authenticated `desk-control-v1` WebSocket. Binary commands
-are sent every 100 ms and expire after 250 ms. Pointer release, cancellation,
-lost capture, page hide, window blur, network error, or page close sends STOP
-where possible and closes the socket. Server disconnect also revokes the
-matching lease. The server permits only one remote motor-control WebSocket.
-
-STOP revokes the lease. A later gesture must complete a fresh authenticated
-handshake, so packets from a previous gesture cannot resume motion.
+Each held motion control opens one authenticated `desk-control-v1` WSS channel.
+Binary commands repeat every 100 ms and expire after 250 ms. Pointer release,
+cancel, lost capture, page hide, blur, timeout, socket error, or page close
+stops and revokes the matching lease. One remote motor-control socket is
+allowed.
 
 ## API
 
 | Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/v1/status` | Authenticated controller and diagnostic snapshot |
-| `GET` | `/api/v1/diagnostics` | Bounded newest-first reset/error history |
-| `POST` | `/api/v1/session` | Exchange device token for session cookie |
-| `DELETE` | `/api/v1/session` | Logout and expire the cookie |
-| `POST` | `/api/v1/provision` | Save and apply WiFi credentials while stopped |
-| `POST` | `/api/v1/mode` | Persist and apply control source mode while stopped |
-| `POST` | `/api/v1/preset` | Capture one safe referenced preset while idle |
-| `POST` | `/api/v1/update` | Stream a signed binary to the inactive OTA slot |
-| `GET` | `/api/v1/control` | Authenticated binary WebSocket upgrade |
+| --- | --- | --- |
+| `GET` | `/api/v1/status` | Authenticated controller and health snapshot |
+| `GET` | `/api/v1/diagnostics` | Bounded reset/error history |
+| `POST` | `/api/v1/session` | Exchange token for secure session |
+| `DELETE` | `/api/v1/session` | Logout |
+| `POST` | `/api/v1/provision` | Apply WiFi credentials while stopped |
+| `POST` | `/api/v1/mode` | Persist control mode while stopped |
+| `POST` | `/api/v1/error/clear` | Request safety-validated error clear |
+| `POST` | `/api/v1/preset` | Capture a safe referenced preset |
+| `POST` | `/api/v1/update` | Stream signed firmware to inactive OTA slot |
+| `GET` | `/api/v1/control` | Authenticated binary WSS upgrade |
 
-The network layer can submit only high-level actions through the bounded
-application queue. It cannot access GPIO, PWM, PCNT, motor IDs, or controller
-internals.
+The network layer submits only bounded semantic requests. It cannot access
+GPIO, PWM, PCNT, motor IDs, enable lines, or live controller internals.
 
-## Why WiFi First
+## Future Transports
 
-SoftAP provisioning already provides a complete credential path from any phone
-without a native app, pairing database, or BLE permission flow. The installed
-web app works with no buttons in `MOBILE_ONLY`. BLE provisioning therefore
-adds code size and another radio protocol without removing a release blocker.
-MQTT similarly adds broker, CA, topic, and reconnect configuration; it is
-deferred until Home Assistant integration has a concrete requirement.
-
-The extension boundary is ready for both: telemetry consumes immutable status
-snapshots, and any future motion transport must use the same authenticated,
-leased high-level command queue. Network loss can never bypass the 250 ms STOP.
+BLE and MQTT remain optional future transports. They must consume immutable
+status and submit the same leased high-level actions through the command queue.
+Network loss, broker failure, or radio restart must resolve to STOP without
+affecting physical control.

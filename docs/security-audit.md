@@ -2,131 +2,90 @@
 
 Audit date: 2026-07-24
 
-## Executive Summary
+## Result
 
-No open critical or high-severity software vulnerability was found in the
-reviewed Phase 1 through P5A firmware. The safety control path is statically
-allocated, host-tested, isolated from ESP-IDF by the HAL, and remains
-authoritative over every local or remote request.
+No known critical or high-severity software finding remains open in the
+reviewed source. This statement is not a certification and does not cover
+uncommissioned hardware, future dependencies, undiscovered vulnerabilities,
+key custody failures, or physical fault injection.
 
-The remaining security findings are accepted homelab deployment constraints,
-not hidden implementation defects. They must be respected during installation.
-The desk is not physically release-ready until the final hardware completes
-the commissioning and soak gates.
+The control path is statically allocated, bounded, host-tested, and isolated
+from ESP-IDF by HAL/application boundaries. Remote input remains leased,
+hold-to-run, single-owner, and subordinate to the same state machine as local
+input.
 
-## Scope
+## Closed Findings
 
-The review covered:
+| Finding | Resolution |
+| --- | --- |
+| Plain HTTP/WebSocket exposed token and commands | HTTPS/WSS only, exact HTTPS origin, secure cookies, CSP, and no plaintext fallback |
+| One image could share credentials across devices | Release build injects a unique per-device secret/certificate and removes generated source |
+| Provisioning/admin secrets appeared on UART | All secret logging removed; offline credential record required |
+| Physical flash exposed firmware, WiFi, and tokens | Secure Boot v2, release-mode flash encryption, encrypted NVS, and restricted ROM download profile |
+| Signed downgrade remained possible | Bootloader anti-rollback and secure version enabled |
+| Secure bootloader exceeded old partition offset | Partition table moved to `0x10000`; signed bootloader and app size gates pass |
+| NVS encryption selected an invalid HMAC eFuse block | NVS keys use flash-encryption protection and dedicated encrypted key partition |
+| Login modal could trap mobile users | Explicit close, cancel, Escape, and nonmodal retry path |
+| Connection state was ambiguous | HTTPS, API/session, WSS lease, and freshness are displayed separately |
+| Buttonless error recovery required reboot/hidden gesture | Authenticated semantic clear request reuses domain safety validation and returns to `SAFE_START` |
+| Blocking or stale status polling could multiply | Fetch timeout, non-overlapping poll, and one rescheduled timer |
 
-- domain, application, HAL, ESP-IDF platform, networking, OTA, and NVS code;
-- the embedded HTML, CSS, and JavaScript mobile controller;
-- unsafe C APIs, dynamic allocation, unbounded work, output coherency, and
-  platform dependency boundaries;
-- authentication, sessions, origin checks, WebSocket leases, provisioning,
-  signed updates, rollback, and secret handling;
-- host tests with ASan/UBSan, coverage, strict formatting, and ESP-IDF 6.0
-  release compilation.
+## Reviewed Controls
 
-## Open Findings
+- bounded C parsing, fixed request/body/session capacities, and login throttling;
+- constant-time administration secret/session comparison;
+- `Secure`, `HttpOnly`, `SameSite=Strict` cookies and no-store responses;
+- exact same-origin enforcement for every mutation and WSS handshake;
+- one WSS control owner, random lease ID, monotonic sequence, 250 ms expiry;
+- STOP on pointer release/cancel, page hide, blur, timeout, error, and close;
+- signed OTA, maintenance inhibit, exact upload length, A/B rollback;
+- unique release credentials, secret file permissions, and ignored key patterns;
+- flash/NVS/coredump/diagnostic protection in the production partition profile;
+- no project-owned control-path heap or unbounded domain work;
+- error-output invariants and mutually exclusive motor directions.
 
-### SEC-001: Plaintext Control on the Local LAN
+## Residual Boundaries
 
-Severity: Medium
+These are not firmware defects that can be fixed away; they are release
+boundaries that must remain controlled.
 
-Location: `docs/networking.md:36`, `main/network/esp_http_api.c:48`
+### Physical Destruction and Denial of Service
 
-Evidence: the controller serves HTTP and `ws://`. It applies CSP, frame denial,
-MIME sniffing denial, no-store responses, exact same-origin checks, and
-authenticated `HttpOnly` sessions, but it does not provide transport
-encryption.
+Secure Boot prevents untrusted execution and flash encryption protects
+confidentiality, but someone with enclosure/eFuse/power access can still erase
+flash, damage wiring, hold E-stop, fault the supply, or destroy the controller.
+Mitigation is restricted physical access, enclosure, recovery custody, and a
+physical E-stop that cuts motor power independently.
 
-Impact: a hostile client with the ability to observe traffic on the same LAN
-could steal an administration token or session and submit authenticated
-hold-to-run requests.
+### TLS and LAN Ownership
 
-Required mitigation: keep the desk on a trusted WPA2/WPA3 LAN or isolated IoT
-VLAN, never port-forward it, and do not expose it to the Internet. A future TLS
-transport may reduce this risk, but it must retain the existing 250 ms lease
-expiry and safety-state boundary.
+The device certificate is supplied by the deployer. A wrong private CA, DNS,
+reverse-proxy, renewal, or phone trust configuration can make the console
+unavailable or train users to ignore certificate warnings. Commission either a
+private-CA direct path or HTTPS-to-HTTPS reverse proxy as documented. Never
+click through a certificate mismatch for motor control.
 
-### SEC-002: Physical Flash Access Is Trusted
+### Hardware and Mechanical Evidence
 
-Severity: Medium
+Automated builds cannot prove BTS7960 clone ratings, GPIO voltages, contactor
+interruption, Hall integrity, PSU transients, EMC, thermal margin, frame
+rigidity, or pinch-zone safety. Every commissioning gate remains mandatory.
 
-Location: `docs/updates.md:5`
+### Upstream and Future Code
 
-Evidence: OTA images require RSA-3072 signatures, while hardware Secure Boot,
-flash encryption, and NVS encryption are intentionally disabled.
+ESP-IDF, mbedTLS, WiFi firmware, toolchains, and future integrations can receive
+security updates or new findings. CI, action dependency updates, signed
+releases, and private reporting reduce response time but do not remove that
+maintenance responsibility.
 
-Impact: someone with physical UART/flash access can replace firmware or recover
-stored WiFi credentials and device secrets.
+## Release Decision
 
-Required mitigation: keep UART and electronics inside the enclosure. Treat
-physical access as administrative access. Enable eFuse-backed controls only
-after a tested recovery process exists; doing so prematurely can make a
-homelab controller unrecoverable.
+The firmware is software-build-ready. It is not desk-production-ready until:
 
-### SEC-003: Provisioning Secrets Appear on UART
-
-Severity: Low
-
-Location: `main/network/esp_network_service.c:47`,
-`main/network/esp_wifi_service.c:13`
-
-Evidence: the generated SoftAP password and 128-bit administration token are
-printed when provisioning is active. This is the deliberate bootstrap channel
-for a headless device.
-
-Impact: retained serial logs or an exposed UART reveal credentials.
-
-Required mitigation: provision in a private environment, do not retain shared
-terminal logs, and enclose the UART after commissioning. No fixed or
-repository-owned password exists.
-
-### SEC-004: Signed Downgrade Is Possible
-
-Severity: Low
-
-Location: `docs/updates.md:16`
-
-Evidence: anti-rollback eFuses are not enabled, so an older image signed by the
-trusted release key remains acceptable.
-
-Impact: an administrator or attacker holding both an authenticated session and
-a valid old signed image can restore a version containing older defects.
-
-Required mitigation: protect the signing key, control release artifacts, and
-verify the displayed version after updates. This tradeoff deliberately
-preserves serial recovery.
-
-## Verified Controls
-
-- No project-owned `malloc`, `calloc`, `realloc`, `free`, or unsafe string-copy
-  call exists in the control code.
-- Domain and HAL sources contain no ESP-IDF GPIO, PCNT, LEDC, FreeRTOS, or task
-  dependency. `desk_app_runtime.c` is the explicit ESP-IDF composition boundary.
-- Motor vectors are validated before application; incoherent direction,
-  enable, duty, or readback causes a stopped hardware-fault state.
-- Remote motion uses an exclusive lease, monotonic sequence checks, local
-  preemption, and a 250 ms expiry. Network loss cannot leave motion latched.
-- Browser code has no HTML injection, dynamic-code execution, browser storage,
-  third-party script, or cross-window messaging sink.
-- Mutating HTTP and WebSocket requests require authentication and exact origin;
-  login attempts, sessions, frame sizes, bodies, timeouts, and queues are
-  bounded.
-- OTA requires a signed image, maintenance inhibit, confirmed STOP output,
-  inactive-slot writes, boot health confirmation, and rollback support.
-- C and web contract tests pass under sanitizers; ESP-IDF builds with warnings
-  as errors, assertions, performance optimization, watchdogs, and strong stack
-  checking.
-
-## Physical Release Blockers
-
-Software tests cannot validate voltage levels, Hall signal compatibility,
-BTS7960 clone behavior, contactor interruption, fuse coordination, motor
-current, conducted noise, RF performance, thermal margins, mechanical skew, or
-real power-loss timing. Every step in `commissioning.md` remains mandatory.
-
-No release tag should be created until those records, including the eight-hour
-soak and repeated E-stop/brownout/OTA rollback tests, pass on the exact final
-assembly.
+- exact hardware and wiring pass commissioning;
+- signing/TLS keys and device records have protected backups;
+- private CA or reverse-proxy trust works without browser warnings;
+- first-boot eFuse state is captured and verified;
+- physical E-stop interrupts motor power with MCU unresponsive;
+- fault injection, power-cycle, OTA rollback, thermal, loaded skew, and soak
+  tests pass.

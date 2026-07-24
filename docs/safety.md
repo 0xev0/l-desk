@@ -15,8 +15,9 @@
 - Each remaining axis receives at most 750 ms after another reaches an endstop.
 - Missing Hall, wrong direction, 1 second stall, or excessive skew stops all.
 - A control-loop interval above 50 ms becomes a latched error.
-- Error clear requires CALIBRATE held 2 seconds and then released with healthy
-  inputs; it returns to `SAFE_START` and never resumes movement automatically.
+- Error clear requires either CALIBRATE held 2 seconds then released or an
+  authenticated semantic clear request. Both require healthy inputs, return to
+  `SAFE_START`, and never resume movement automatically.
 - Presets are hold-to-run, use one direction per gesture, and latch STOP when
   the target is crossed or enters tolerance.
 - OTA first inhibits all command sources and requires a confirmed STOP vector.
@@ -55,7 +56,8 @@ Firmware cannot guarantee safety if:
 - the frame racks, binds, tips, or uses actuators as lateral guides;
 - mechanical hard stops are absent;
 - Hall wiring creates plausible but false counts;
-- an authenticated client is compromised on the unencrypted trusted LAN;
+- an authenticated phone/session, TLS private key, or reverse proxy is
+  compromised;
 - the selected drivers, PSU, connectors, or enclosure overheat.
 
 Use a DC-rated physical contactor, branch fuses, proper earth/grounding,
