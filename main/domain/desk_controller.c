@@ -16,12 +16,13 @@ desk_config_t desk_config_default(void)
         .calibrate_hold_ms = 2000U,
         .soft_start_ms = 500U,
         .feedback_stall_timeout_ms = 1000U,
-        .feedback_warning_counts = 30,
-        .feedback_stop_counts = 50,
+        .feedback_warning_um = 3000,
+        .feedback_stop_um = 5000,
         .maximum_duty_permille = 1000U,
         .starting_duty_permille = 300U,
         .synchronization_trim_permille = 200U,
         .feedback_required = true,
+        .require_position_reference = true,
     };
 }
 
@@ -65,6 +66,7 @@ static desk_outputs_t current_outputs(const desk_controller_t *controller)
         .error = controller->error,
         .feedback_warning = controller->feedback_warning,
         .calibration_completed = controller->calibration_completed,
+        .position_reference_valid = controller->position_reference_valid,
     };
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
@@ -108,6 +110,9 @@ static void enter_error(desk_controller_t *controller, desk_error_t error, uint6
     controller->error = error;
     controller->pending_direction = MOTOR_COMMAND_STOP;
     controller->calibrate_timing = false;
+    if (controller->config.require_position_reference) {
+        controller->position_reference_valid = false;
+    }
 }
 
 static bool has_limit_conflict(const desk_inputs_t *inputs)
@@ -178,8 +183,8 @@ static bool config_is_valid(const desk_config_t *config)
            config->max_control_interval_ms >= config->control_tick_ms &&
            config->alignment_timeout_ms > 0U && config->calibration_timeout_ms > 0U &&
            (!config->feedback_required || config->feedback_stall_timeout_ms > 0U) &&
-           config->feedback_warning_counts >= 0 &&
-           config->feedback_stop_counts > config->feedback_warning_counts &&
+           config->feedback_warning_um >= 0 &&
+           config->feedback_stop_um > config->feedback_warning_um &&
            config->maximum_duty_permille > 0U && config->maximum_duty_permille <= 1000U &&
            config->starting_duty_permille > 0U &&
            config->starting_duty_permille <= config->maximum_duty_permille &&
@@ -241,15 +246,15 @@ static uint16_t ramped_duty(const desk_controller_t *controller, uint64_t now_ms
 
 static uint32_t feedback_spread(const desk_inputs_t *inputs, int32_t *minimum, int32_t *maximum)
 {
-    int32_t min_value = inputs->axis[0].hall_count;
+    int32_t min_value = inputs->axis[0].position_um;
     int32_t max_value = min_value;
 
     for (size_t axis = 1; axis < DESK_AXIS_COUNT; ++axis) {
-        if (inputs->axis[axis].hall_count < min_value) {
-            min_value = inputs->axis[axis].hall_count;
+        if (inputs->axis[axis].position_um < min_value) {
+            min_value = inputs->axis[axis].position_um;
         }
-        if (inputs->axis[axis].hall_count > max_value) {
-            max_value = inputs->axis[axis].hall_count;
+        if (inputs->axis[axis].position_um > max_value) {
+            max_value = inputs->axis[axis].position_um;
         }
     }
 
@@ -323,6 +328,8 @@ static bool update_endstop_alignment(desk_controller_t *controller, const desk_i
         controller->error = DESK_ERROR_NONE;
         controller->calibration_completed = calibration_active;
         controller->calibration_release_required = calibration_active;
+        controller->position_reference_valid =
+            calibration_active || !controller->config.require_position_reference;
         controller->calibrate_timing = false;
         reset_alignment(controller);
         return false;
@@ -363,11 +370,11 @@ static bool apply_feedback_synchronization(desk_controller_t *controller,
     int32_t minimum = 0;
     int32_t maximum = 0;
     uint32_t spread = feedback_spread(inputs, &minimum, &maximum);
-    if (spread > (uint32_t)controller->config.feedback_stop_counts) {
+    if (spread > (uint32_t)controller->config.feedback_stop_um) {
         enter_error(controller, DESK_ERROR_FEEDBACK_SKEW, now_ms);
         return false;
     }
-    if (spread < (uint32_t)controller->config.feedback_warning_counts) {
+    if (spread < (uint32_t)controller->config.feedback_warning_um) {
         return true;
     }
 
@@ -376,9 +383,10 @@ static bool apply_feedback_synchronization(desk_controller_t *controller,
     uint16_t trim = controller->config.synchronization_trim_permille;
     uint16_t reduced = base_duty > trim ? (uint16_t)(base_duty - trim) : 1U;
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
-        bool leading_up = direction == MOTOR_COMMAND_UP && inputs->axis[axis].hall_count == maximum;
+        bool leading_up =
+            direction == MOTOR_COMMAND_UP && inputs->axis[axis].position_um == maximum;
         bool leading_down =
-            direction == MOTOR_COMMAND_DOWN && inputs->axis[axis].hall_count == minimum;
+            direction == MOTOR_COMMAND_DOWN && inputs->axis[axis].position_um == minimum;
         if (leading_up || leading_down) {
             duty[axis] = reduced;
         }
@@ -445,7 +453,8 @@ static void handle_safe_start(desk_controller_t *controller, const desk_inputs_t
     }
 
     if (now_ms - controller->safe_start_since_ms >= controller->config.safe_start_release_ms) {
-        controller->state = DESK_STATE_IDLE;
+        controller->state =
+            controller->position_reference_valid ? DESK_STATE_IDLE : DESK_STATE_UNREFERENCED;
         controller->safe_start_timing = false;
     }
 }
@@ -455,7 +464,8 @@ static void handle_calibration(desk_controller_t *controller, const desk_inputs_
 {
     if (!inputs->calibrate_pressed) {
         stop_all(controller, now_ms);
-        controller->state = DESK_STATE_IDLE;
+        controller->state =
+            controller->position_reference_valid ? DESK_STATE_IDLE : DESK_STATE_UNREFERENCED;
         controller->error = DESK_ERROR_NONE;
         controller->calibrate_timing = false;
         reset_alignment(controller);
@@ -506,6 +516,7 @@ void desk_controller_init(desk_controller_t *controller, const desk_config_t *co
         .last_motion_direction = MOTOR_COMMAND_STOP,
         .pending_direction = MOTOR_COMMAND_STOP,
         .debounce_candidate_direction = MOTOR_COMMAND_STOP,
+        .position_reference_valid = !resolved_config.require_position_reference,
     };
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         controller->motor[axis] = stopped_axis();
@@ -594,6 +605,13 @@ desk_outputs_t desk_controller_tick(desk_controller_t *controller, const desk_in
     }
     controller->calibrate_timing = false;
 
+    if (controller->state == DESK_STATE_UNREFERENCED) {
+        stop_all(controller, now_ms);
+        reset_button_debounce(controller);
+        reset_alignment(controller);
+        return current_outputs(controller);
+    }
+
     motor_command_t raw_requested = requested_manual_direction(inputs);
     if (raw_requested == MOTOR_COMMAND_STOP) {
         stop_all(controller, now_ms);
@@ -658,6 +676,7 @@ bool desk_controller_request_clear_error(desk_controller_t *controller, const de
     controller->safe_start_timing = false;
     controller->calibrate_timing = false;
     controller->calibration_release_required = false;
+    controller->position_reference_valid = !controller->config.require_position_reference;
     reset_button_debounce(controller);
     reset_alignment(controller);
     return true;

@@ -2,7 +2,7 @@
 
 ## Host Suite
 
-Eleven CTest executables cover domain, application, input filtering, fake HAL,
+Twelve CTest executables cover domain, application, input filtering, fake HAL,
 and output invariants without ESP-IDF hardware.
 
 ```sh
@@ -37,6 +37,7 @@ line coverage at or above 95% and all safety transitions explicitly tested.
 ## Covered Behavior
 
 - `SAFE_START`, held boot buttons, manual hold-to-run, and immediate release
+- `UNREFERENCED`, calibration-required boot, and integer position scaling
 - Three-axis upper/lower limits and all six endstop arrival orders
 - Alignment and calibration timeout
 - Long-hold calibration, abort, and already-at-limit cases

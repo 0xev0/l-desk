@@ -65,9 +65,9 @@ bool desk_outputs_are_coherent(const desk_outputs_t *outputs)
             return false;
         }
 
-        bool stopped_state = outputs->state == DESK_STATE_SAFE_START ||
-                             outputs->state == DESK_STATE_IDLE ||
-                             outputs->state == DESK_STATE_ERROR;
+        bool stopped_state =
+            outputs->state == DESK_STATE_SAFE_START || outputs->state == DESK_STATE_UNREFERENCED ||
+            outputs->state == DESK_STATE_IDLE || outputs->state == DESK_STATE_ERROR;
         if (stopped_state && motor->direction != MOTOR_COMMAND_STOP) {
             return false;
         }

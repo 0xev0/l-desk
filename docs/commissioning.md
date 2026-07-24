@@ -45,6 +45,8 @@ do not install that temporary setup in the desk.
 - Jog briefly at low PWM and confirm UP increases Hall count.
 - Confirm DOWN decreases Hall count. Correct channel order/sign centrally.
 - Measure Hall counts over a known travel in both directions several times.
+- Enter the measured counts-per-travel value independently for all three axes;
+  do not assume that nominally identical Hall sensors have identical scale.
 - Measure no-load running, startup, and safely limited stall current.
 - Verify upper/lower endstops stop the correct direction and allow retreat.
 - Verify stall detection by disconnecting one Hall channel only under controlled
@@ -55,7 +57,7 @@ Repeat for all three actuator/driver pairs.
 ## 5. Three Actuators, Unloaded Frame
 
 - Install all guides and the rigid frame, without the final tabletop/load.
-- Enter measured Hall warning/stop counts and conservative PWM in
+- Enter measured Hall scales, warning/stop distances, and conservative PWM in
   `board_config.h`, rebuild, and repeat output tests.
 - Calibrate down while holding CALIBRATE; release must abort immediately.
 - Confirm successful calibration zeroes all counters.

@@ -67,7 +67,7 @@ static void feedback_direction_and_skew_are_checked(void)
 
     controller_rig_init(&rig, &config);
     controller_reach_idle(&rig);
-    rig.inputs.axis[0].hall_count = config.feedback_stop_counts + 1;
+    rig.inputs.axis[0].position_um = config.feedback_stop_um + 1;
     rig.inputs.up_pressed = true;
     controller_debounce_button(&rig);
     TEST_ASSERT_EQUAL_INT(DESK_ERROR_FEEDBACK_SKEW, rig.outputs.error);
@@ -93,7 +93,7 @@ static void feedback_warning_trims_only_the_leading_axis(void)
     config.soft_start_ms = 0U;
     controller_rig_init(&rig, &config);
     controller_reach_idle(&rig);
-    rig.inputs.axis[DESK_AXIS_FRONT_LEFT].hall_count = config.feedback_warning_counts;
+    rig.inputs.axis[DESK_AXIS_FRONT_LEFT].position_um = config.feedback_warning_um;
     rig.inputs.up_pressed = true;
     controller_debounce_button(&rig);
 

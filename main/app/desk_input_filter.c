@@ -65,6 +65,7 @@ desk_inputs_t desk_input_filter_update(desk_input_filter_t *filter, const desk_i
 
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
         filter->stable_inputs.axis[axis].hall_count = raw_inputs->axis[axis].hall_count;
+        filter->stable_inputs.axis[axis].position_um = raw_inputs->axis[axis].position_um;
         filter->stable_inputs.axis[axis].hall_valid = raw_inputs->axis[axis].hall_valid;
         update_immediate_active_debounced_release(
             raw_inputs->axis[axis].upper_limit_active,

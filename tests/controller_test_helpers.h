@@ -13,8 +13,9 @@ typedef struct {
 static inline desk_config_t controller_test_config(void)
 {
     desk_config_t config = desk_config_default();
-    config.feedback_warning_counts = 30;
-    config.feedback_stop_counts = 50;
+    config.feedback_warning_um = 3000;
+    config.feedback_stop_um = 5000;
+    config.require_position_reference = false;
     return config;
 }
 

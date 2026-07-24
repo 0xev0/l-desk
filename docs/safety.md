@@ -30,14 +30,16 @@ physical cause.
 
 ## Hall Synchronization Limits
 
-Incremental Hall counts require a successful lower calibration after every lost
-position/reset. The current release does not move to automatic positions. PWM
+Incremental Hall counts require a successful lower calibration after every
+boot. `UNREFERENCED` inhibits ordinary movement. The current release does not
+move to automatic positions. PWM
 trim reduces the leading axis; it is not a PID and cannot compensate for a bent
 frame, overloaded column, slipping mechanics, or sensor pulses that look valid
 but are physically wrong.
 
-The 3 mm warning and 5 mm hard-stop goals are acceptance criteria. Firmware uses
-raw count thresholds until measured pulses/mm are written into board tuning.
+The 3 mm warning and 5 mm hard-stop goals are represented in normalized
+micrometers. Their physical accuracy still depends on measured per-axis
+counts-per-travel values in board tuning.
 
 ## Outside Firmware Control
 

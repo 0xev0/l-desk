@@ -33,7 +33,7 @@ revision checks are complete.
 
 ## Tuning Values
 
-`board_config.h` also centralizes Hall warning/stop counts, Hall stall timeout,
-start/max PWM, and synchronization trim. The checked-in 30/50 count thresholds
-are conservative provisional values, not yet proven to equal 3/5 mm. Measure
-pulses per millimeter on each selected actuator before loaded commissioning.
+`board_config.h` also centralizes each axis counts-per-travel scale, Hall
+warning/stop distances in micrometers, stall timeout, start/max PWM, and
+synchronization trim. Replace the provisional scales with measurements from
+each selected actuator before loaded commissioning.

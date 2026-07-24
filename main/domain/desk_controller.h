@@ -35,6 +35,7 @@ typedef struct {
     bool feedback_warning;
     bool calibration_completed;
     bool calibration_release_required;
+    bool position_reference_valid;
 } desk_controller_t;
 
 void desk_controller_init(desk_controller_t *controller, const desk_config_t *config);

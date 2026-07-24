@@ -14,12 +14,13 @@ typedef struct {
     uint32_t calibrate_hold_ms;
     uint32_t soft_start_ms;
     uint32_t feedback_stall_timeout_ms;
-    int32_t feedback_warning_counts;
-    int32_t feedback_stop_counts;
+    int32_t feedback_warning_um;
+    int32_t feedback_stop_um;
     uint16_t maximum_duty_permille;
     uint16_t starting_duty_permille;
     uint16_t synchronization_trim_permille;
     bool feedback_required;
+    bool require_position_reference;
 } desk_config_t;
 
 desk_config_t desk_config_default(void);

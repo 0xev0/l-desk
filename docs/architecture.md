@@ -37,6 +37,8 @@ watchdog service failure becomes a latched hardware/control error.
 
 - `SAFE_START`: STOP until controls are released and safety inputs remain valid
   for 500 ms. A held boot button cannot start movement.
+- `UNREFERENCED`: STOP after boot until a deliberate downward calibration
+  establishes a common lower reference for all three axes.
 - `IDLE`: STOP, waiting for a debounced hold-to-run request.
 - `MOVING_UP` / `MOVING_DOWN`: independent axis output, Hall checks, soft start,
   synchronization trim, limits, and alignment timeout.
@@ -81,8 +83,10 @@ During motion the domain checks:
 - global spread remains below the hard threshold;
 - leading axes receive a configurable PWM reduction at the warning threshold.
 
-Counts are relative and become zero only after successful lower calibration.
-No preset or absolute automatic positioning is implemented.
+Raw counts remain available for direction and stall checks. Each axis also has
+an integer counts-per-travel scale that converts its count to micrometers before
+skew comparison. Position becomes referenced only after successful lower
+calibration. No preset or absolute automatic positioning is implemented.
 
 ## Extension Points
 

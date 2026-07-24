@@ -15,12 +15,14 @@ frame pass [commissioning](docs/commissioning.md).
 Implemented:
 
 - Three independently controlled actuator axes
-- `SAFE_START`, manual UP/DOWN, calibration, and latched `ERROR` states
+- `SAFE_START`, `UNREFERENCED`, manual UP/DOWN, calibration, and latched `ERROR`
 - Six NC upper/lower limits with immediate activation and filtered release
 - E-stop detection, both-buttons fault, and no movement on boot
 - 300 ms direction reversal dead time and 500 ms soft start
 - Hall quadrature counting through ESP-IDF PCNT
 - Hall direction, missing feedback, stall, and skew detection
+- Per-axis integer Hall scaling to micrometers with no floating point
+- Deliberate calibration required after boot before normal movement
 - PWM trim of the leading axis and hard stop at the configured skew threshold
 - 750 ms endstop alignment window for all three arrival orders
 - Injectable HAL, host fake, watchdog, strict warnings, ASan, and UBSan tests

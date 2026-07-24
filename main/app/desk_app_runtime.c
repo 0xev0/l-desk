@@ -8,8 +8,8 @@ void desk_app_run(void)
     desk_app_t app;
     desk_config_t config = desk_config_default();
     config.feedback_required = BOARD_HALL_FEEDBACK_REQUIRED != 0;
-    config.feedback_warning_counts = BOARD_HALL_WARNING_COUNTS;
-    config.feedback_stop_counts = BOARD_HALL_STOP_COUNTS;
+    config.feedback_warning_um = BOARD_HALL_WARNING_UM;
+    config.feedback_stop_um = BOARD_HALL_STOP_UM;
     config.feedback_stall_timeout_ms = BOARD_HALL_STALL_TIMEOUT_MS;
     config.starting_duty_permille = BOARD_MOTOR_START_DUTY_PERMILLE;
     config.maximum_duty_permille = BOARD_MOTOR_MAX_DUTY_PERMILLE;

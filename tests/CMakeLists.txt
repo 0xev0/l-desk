@@ -37,6 +37,16 @@ endif()
 
 enable_testing()
 
+add_executable(test_position_scale
+    test_position_scale.c
+    ../main/domain/position_scale.c
+)
+target_include_directories(test_position_scale PRIVATE
+    ../main/domain
+)
+
+add_test(NAME test_position_scale COMMAND test_position_scale)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c

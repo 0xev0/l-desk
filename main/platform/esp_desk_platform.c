@@ -15,6 +15,8 @@ static const char *state_name(desk_state_t state)
     switch (state) {
     case DESK_STATE_SAFE_START:
         return "SAFE_START";
+    case DESK_STATE_UNREFERENCED:
+        return "UNREFERENCED";
     case DESK_STATE_IDLE:
         return "IDLE";
     case DESK_STATE_MOVING_UP:

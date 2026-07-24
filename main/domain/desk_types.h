@@ -19,6 +19,7 @@ typedef enum {
 
 typedef enum {
     DESK_STATE_SAFE_START = 0,
+    DESK_STATE_UNREFERENCED,
     DESK_STATE_IDLE,
     DESK_STATE_MOVING_UP,
     DESK_STATE_MOVING_DOWN,
@@ -46,6 +47,7 @@ typedef struct {
     bool upper_limit_active;
     bool lower_limit_active;
     int32_t hall_count;
+    int32_t position_um;
     bool hall_valid;
 } desk_axis_inputs_t;
 
@@ -70,4 +72,5 @@ typedef struct {
     desk_error_t error;
     bool feedback_warning;
     bool calibration_completed;
+    bool position_reference_valid;
 } desk_outputs_t;

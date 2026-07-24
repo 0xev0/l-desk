@@ -1,9 +1,11 @@
 #include "esp_hall_hal.h"
 
+#include <limits.h>
 #include <stddef.h>
 
 #include "board_config.h"
 #include "driver/gpio.h"
+#include "position_scale.h"
 
 static const int hall_a_pins[DESK_AXIS_COUNT] = {
     PIN_AXIS_FRONT_LEFT_HALL_A,
@@ -21,6 +23,12 @@ static const int hall_signs[DESK_AXIS_COUNT] = {
     AXIS_FRONT_LEFT_HALL_SIGN,
     AXIS_FRONT_RIGHT_HALL_SIGN,
     AXIS_WING_HALL_SIGN,
+};
+
+static const desk_position_scale_t hall_scales[DESK_AXIS_COUNT] = {
+    {BOARD_ACTUATOR_TRAVEL_UM, AXIS_FRONT_LEFT_COUNTS_PER_TRAVEL},
+    {BOARD_ACTUATOR_TRAVEL_UM, AXIS_FRONT_RIGHT_COUNTS_PER_TRAVEL},
+    {BOARD_ACTUATOR_TRAVEL_UM, AXIS_WING_COUNTS_PER_TRAVEL},
 };
 
 static void release_resources(esp_hall_hal_t *hal)
@@ -147,7 +155,15 @@ esp_err_t esp_hall_hal_read(const esp_hall_hal_t *hal, desk_inputs_t *inputs)
         if (result != ESP_OK) {
             return result;
         }
-        inputs->axis[axis].hall_count = count * hall_signs[axis];
+        int64_t signed_count = (int64_t)count * hall_signs[axis];
+        if (signed_count < INT32_MIN || signed_count > INT32_MAX) {
+            return ESP_ERR_INVALID_RESPONSE;
+        }
+        inputs->axis[axis].hall_count = (int32_t)signed_count;
+        if (!desk_position_from_count(inputs->axis[axis].hall_count, &hall_scales[axis],
+                                      &inputs->axis[axis].position_um)) {
+            return ESP_ERR_INVALID_RESPONSE;
+        }
         inputs->axis[axis].hall_valid = true;
     }
     return ESP_OK;

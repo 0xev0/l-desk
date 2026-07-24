@@ -10,6 +10,13 @@ static void run_steps(desk_app_t *app, fake_platform_t *fake, unsigned count)
     }
 }
 
+static desk_config_t app_test_config(void)
+{
+    desk_config_t config = desk_config_default();
+    config.require_position_reference = false;
+    return config;
+}
+
 static void assert_outputs_stopped(desk_outputs_t outputs)
 {
     for (size_t axis = 0; axis < DESK_AXIS_COUNT; ++axis) {
@@ -24,7 +31,7 @@ static void app_runs_through_injected_platform(void)
     fake_platform_t fake;
     fake_platform_reset(&fake);
     desk_platform_t platform = fake_platform_interface(&fake);
-    desk_config_t config = desk_config_default();
+    desk_config_t config = app_test_config();
     desk_app_t app;
     TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
     run_steps(&app, &fake, 52U);
@@ -44,7 +51,7 @@ static void read_and_write_failures_fail_stopped(void)
     fake_platform_t fake;
     fake_platform_reset(&fake);
     desk_platform_t platform = fake_platform_interface(&fake);
-    desk_config_t config = desk_config_default();
+    desk_config_t config = app_test_config();
     desk_app_t app;
     TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
     fake.fail_read = true;
@@ -74,7 +81,7 @@ static void error_clear_requires_long_hold_and_release(void)
     fake_platform_t fake;
     fake_platform_reset(&fake);
     desk_platform_t platform = fake_platform_interface(&fake);
-    desk_config_t config = desk_config_default();
+    desk_config_t config = app_test_config();
     desk_app_t app;
     TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
     run_steps(&app, &fake, 52U);
@@ -110,7 +117,7 @@ static void calibration_zero_failure_enters_hardware_error(void)
     fake_platform_t fake;
     fake_platform_reset(&fake);
     desk_platform_t platform = fake_platform_interface(&fake);
-    desk_config_t config = desk_config_default();
+    desk_config_t config = app_test_config();
     desk_app_t app;
     TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
     run_steps(&app, &fake, 52U);
@@ -134,7 +141,7 @@ static void calibration_at_lower_limits_zeroes_hall_once(void)
     fake_platform_t fake;
     fake_platform_reset(&fake);
     desk_platform_t platform = fake_platform_interface(&fake);
-    desk_config_t config = desk_config_default();
+    desk_config_t config = app_test_config();
     desk_app_t app;
     TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
     run_steps(&app, &fake, 52U);

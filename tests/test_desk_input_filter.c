@@ -31,11 +31,13 @@ static void commands_and_feedback_pass_through(void)
         .calibrate_pressed = true,
     };
     raw.axis[1].hall_count = 1234;
+    raw.axis[1].position_um = 61700;
     raw.axis[1].hall_valid = true;
     desk_inputs_t stable = desk_input_filter_update(&filter, &raw, 10U);
     TEST_ASSERT_TRUE(stable.up_pressed);
     TEST_ASSERT_TRUE(stable.calibrate_pressed);
     TEST_ASSERT_EQUAL_INT(1234, stable.axis[1].hall_count);
+    TEST_ASSERT_EQUAL_INT(61700, stable.axis[1].position_um);
     TEST_ASSERT_TRUE(stable.axis[1].hall_valid);
 }
 
