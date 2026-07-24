@@ -3,15 +3,16 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "board_config.h"
 #include "desk_app.h"
+#include "desk_build_secrets.h"
 #include "desk_control_protocol.h"
 #include "desk_form_codec.h"
 #include "desk_http_security.h"
 #include "desk_network_config.h"
 #include "esp_app_desc.h"
+#include "esp_https_server.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_ota_update.h"
@@ -53,11 +54,22 @@ static esp_err_t set_security_headers(httpd_req_t *request)
     }
     if (result == ESP_OK) {
         result = httpd_resp_set_hdr(request, "Content-Security-Policy",
-                                    "default-src 'self'; connect-src 'self' ws:; img-src 'self'; "
-                                    "style-src 'self'; script-src 'self'; frame-ancestors 'none'");
+                                    "default-src 'self'; connect-src 'self' wss:; img-src 'self'; "
+                                    "style-src 'self'; script-src 'self'; object-src 'none'; "
+                                    "base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     }
     if (result == ESP_OK) {
         result = httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+    }
+    if (result == ESP_OK) {
+        result = httpd_resp_set_hdr(request, "Referrer-Policy", "no-referrer");
+    }
+    if (result == ESP_OK) {
+        result = httpd_resp_set_hdr(request, "Permissions-Policy",
+                                    "camera=(), microphone=(), geolocation=()");
+    }
+    if (result == ESP_OK) {
+        result = httpd_resp_set_hdr(request, "Cross-Origin-Opener-Policy", "same-origin");
     }
     return result;
 }
@@ -561,9 +573,9 @@ static esp_err_t login_handler(httpd_req_t *request)
     }
 
     char cookie[128];
-    int written =
-        snprintf(cookie, sizeof(cookie), "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800",
-                 SESSION_COOKIE, session);
+    int written = snprintf(
+        cookie, sizeof(cookie), "%s=%s; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800",
+        SESSION_COOKIE, session);
     if (written <= 0 || (size_t)written >= sizeof(cookie) ||
         set_security_headers(request) != ESP_OK ||
         httpd_resp_set_hdr(request, "Set-Cookie", cookie) != ESP_OK) {
@@ -582,7 +594,8 @@ static esp_err_t logout_handler(httpd_req_t *request)
         return send_error(request, "401 Unauthorized", "authentication_required");
     }
     if (httpd_resp_set_hdr(request, "Set-Cookie",
-                           "desk_session=expired; Path=/; HttpOnly; SameSite=Strict; Max-Age=0") !=
+                           "desk_session=expired; Path=/; Secure; HttpOnly; SameSite=Strict; "
+                           "Max-Age=0") !=
         ESP_OK) {
         return ESP_FAIL;
     }
@@ -753,7 +766,6 @@ static void http_session_close(httpd_handle_t server, int socket_fd)
         api->websocket_fd = -1;
         api->websocket_lease_id = 0U;
     }
-    (void)close(socket_fd);
 }
 
 static void keep_static_context(void *context)
@@ -786,16 +798,29 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
         return ESP_ERR_INVALID_STATE;
     }
 
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 8192U;
-    config.max_uri_handlers = 12U;
-    config.max_open_sockets = 7U;
-    config.lru_purge_enable = true;
-    config.global_user_ctx = api;
-    config.global_user_ctx_free_fn = keep_static_context;
-    config.close_fn = http_session_close;
+    desk_build_secrets_t build_secrets;
+    if (!desk_build_secrets_get(&build_secrets)) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
-    esp_err_t result = httpd_start(&api->server, &config);
+    httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
+    config.httpd.stack_size = 12288U;
+    config.httpd.max_uri_handlers = 12U;
+    config.httpd.max_open_sockets = 4U;
+    config.httpd.max_resp_headers = 12U;
+    config.httpd.lru_purge_enable = true;
+    config.httpd.global_user_ctx = api;
+    config.httpd.global_user_ctx_free_fn = keep_static_context;
+    config.httpd.close_fn = http_session_close;
+    config.servercert = build_secrets.tls_certificate;
+    config.servercert_len = build_secrets.tls_certificate_size;
+    config.prvtkey_pem = build_secrets.tls_private_key;
+    config.prvtkey_len = build_secrets.tls_private_key_size;
+    config.transport_mode = HTTPD_SSL_TRANSPORT_SECURE;
+    config.port_secure = 443U;
+    config.tls_version = ESP_TLS_VER_TLS_1_2;
+
+    esp_err_t result = httpd_ssl_start(&api->server, &config);
     if (result != ESP_OK) {
         return result;
     }
@@ -833,12 +858,12 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
     for (size_t index = 0U; index < sizeof(handlers) / sizeof(handlers[0]); ++index) {
         result = register_handler(api->server, &handlers[index]);
         if (result != ESP_OK) {
-            (void)httpd_stop(api->server);
+            (void)httpd_ssl_stop(api->server);
             api->server = NULL;
             return result;
         }
     }
     api->initialized = true;
-    ESP_LOGI(TAG, "authenticated local API started");
+    ESP_LOGI(TAG, "authenticated HTTPS/WSS API started");
     return ESP_OK;
 }

@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "board_config.h"
+#include "desk_build_secrets.h"
 #include "desk_preset_record.h"
-#include "esp_random.h"
 #include "nvs_flash.h"
 
 #define DESK_NETWORK_NVS_NAMESPACE "desk_net"
@@ -48,15 +48,13 @@ static esp_err_t load_or_create_admin_secret(esp_network_store_t *store)
         return result;
     }
 
-    for (unsigned attempt = 0U; attempt < 4U; ++attempt) {
-        esp_fill_random(store->admin_secret, sizeof(store->admin_secret));
-        if (bytes_are_nonzero(store->admin_secret, sizeof(store->admin_secret))) {
-            result = nvs_set_blob(store->nvs, DESK_NETWORK_NVS_KEY_ADMIN, store->admin_secret,
-                                  sizeof(store->admin_secret));
-            return result == ESP_OK ? nvs_commit(store->nvs) : result;
-        }
+    if (!desk_build_secrets_copy_admin_secret(store->admin_secret) ||
+        !bytes_are_nonzero(store->admin_secret, sizeof(store->admin_secret))) {
+        return ESP_FAIL;
     }
-    return ESP_FAIL;
+    result = nvs_set_blob(store->nvs, DESK_NETWORK_NVS_KEY_ADMIN, store->admin_secret,
+                          sizeof(store->admin_secret));
+    return result == ESP_OK ? nvs_commit(store->nvs) : result;
 }
 
 static void derive_provisioning_password(esp_network_store_t *store)

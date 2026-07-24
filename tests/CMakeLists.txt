@@ -42,6 +42,10 @@ add_test(
     NAME test_web_contract
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_web_contract.py
 )
+add_test(
+    NAME test_build_secrets
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_build_secrets.py
+)
 
 find_program(DESK_NODE_EXECUTABLE node)
 if(DESK_NODE_EXECUTABLE)

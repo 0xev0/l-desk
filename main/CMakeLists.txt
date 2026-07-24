@@ -26,6 +26,7 @@ idf_component_register(
         "network/esp_wifi_service.c"
         "platform/board_config.c"
         "platform/bts7960_driver.c"
+        "platform/desk_build_secrets.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
         "platform/esp_hall_hal.c"
@@ -49,6 +50,7 @@ idf_component_register(
         app_update
         esp_event
         esp_http_server
+        esp_https_server
         esp_netif
         esp_wifi
         nvs_flash

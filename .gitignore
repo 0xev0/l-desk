@@ -65,6 +65,7 @@ pnpm-debug.log*
 secrets/
 credentials/
 private/
+/main/generated/
 
 # IDE and editor state
 .idea/

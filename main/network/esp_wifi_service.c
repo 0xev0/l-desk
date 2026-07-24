@@ -16,11 +16,6 @@ static esp_err_t start_provisioning(esp_wifi_service_t *service)
     if (result == ESP_OK) {
         atomic_store_explicit(&service->provisioning_active, true, memory_order_release);
         ESP_LOGW(TAG, "provisioning AP active: SSID=%s", service->provisioning_ssid);
-        ESP_LOGW(TAG, "provisioning password: %s", service->store->provisioning_ap_password);
-        char admin_secret[DESK_AUTH_SECRET_TEXT_SIZE];
-        if (desk_auth_format_secret(service->store->admin_secret, admin_secret)) {
-            ESP_LOGW(TAG, "device administration token: %s", admin_secret);
-        }
     }
     return result;
 }

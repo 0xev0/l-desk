@@ -70,6 +70,9 @@ class DeskMockHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(encoded)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
         if cookie is not None:
             self.send_header("Set-Cookie", cookie)
         self.end_headers()
@@ -82,7 +85,7 @@ class DeskMockHandler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin", "")
         host = self.headers.get("Host", "")
         parsed = urlsplit(origin)
-        return parsed.scheme == "http" and parsed.netloc == host and parsed.path == ""
+        return parsed.scheme == "https" and parsed.netloc == host and parsed.path == ""
 
     def read_form(self):
         length = int(self.headers.get("Content-Length", "0"))
@@ -146,7 +149,11 @@ class DeskMockHandler(BaseHTTPRequestHandler):
             if len(token) != 32:
                 self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "invalid_credentials"})
             else:
-                self.send_json(HTTPStatus.OK, {"authenticated": True}, SESSION_COOKIE)
+                self.send_json(
+                    HTTPStatus.OK,
+                    {"authenticated": True},
+                    f"{SESSION_COOKIE}; Secure; HttpOnly; SameSite=Strict",
+                )
             return
         if not self.authenticated() or not self.same_origin():
             self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "authentication_required"})

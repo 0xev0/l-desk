@@ -83,7 +83,7 @@ desk_http_cookie_result_t desk_http_extract_cookie(const char *header, size_t he
 
 bool desk_http_origin_matches_host(const char *origin, const char *host)
 {
-    static const char prefix[] = "http://";
+    static const char prefix[] = "https://";
     if (origin == NULL || host == NULL || host[0] == '\0') {
         return false;
     }

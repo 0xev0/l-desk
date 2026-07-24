@@ -19,7 +19,7 @@ class WebContractTest(unittest.TestCase):
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         cls.host = f"127.0.0.1:{cls.server.server_port}"
-        cls.origin = f"http://{cls.host}"
+        cls.origin = f"https://{cls.host}"
 
     @classmethod
     def tearDownClass(cls):
@@ -53,6 +53,9 @@ class WebContractTest(unittest.TestCase):
         self.assertEqual(json.loads(payload), {"authenticated": True})
         cookie = dict(headers)["Set-Cookie"]
         self.assertTrue(cookie.startswith(web_mock_server.SESSION_COOKIE))
+        self.assertIn("Secure", cookie)
+        self.assertIn("HttpOnly", cookie)
+        self.assertIn("SameSite=Strict", cookie)
         return web_mock_server.SESSION_COOKIE
 
     def authenticated_headers(self, content_type=None):
@@ -137,7 +140,7 @@ class WebContractTest(unittest.TestCase):
             b"firmware",
             {
                 "Cookie": cookie,
-                "Origin": "http://attacker.invalid",
+                "Origin": "https://attacker.invalid",
                 "Content-Type": "application/octet-stream",
             },
         )

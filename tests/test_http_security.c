@@ -38,12 +38,14 @@ static void malformed_duplicate_and_oversize_cookies_are_rejected(void)
 
 static void browser_origin_must_match_the_exact_host(void)
 {
-    TEST_ASSERT_TRUE(desk_http_origin_matches_host("http://192.168.4.1", "192.168.4.1"));
-    TEST_ASSERT_TRUE(desk_http_origin_matches_host("http://desk.local:8080", "desk.local:8080"));
-    TEST_ASSERT_FALSE(desk_http_origin_matches_host("https://desk.local", "desk.local"));
-    TEST_ASSERT_FALSE(desk_http_origin_matches_host("http://desk.local.attacker", "desk.local"));
+    TEST_ASSERT_TRUE(desk_http_origin_matches_host("https://192.168.4.1", "192.168.4.1"));
+    TEST_ASSERT_TRUE(desk_http_origin_matches_host("https://desk.example:8443",
+                                                   "desk.example:8443"));
+    TEST_ASSERT_FALSE(desk_http_origin_matches_host("http://desk.example", "desk.example"));
+    TEST_ASSERT_FALSE(
+        desk_http_origin_matches_host("https://desk.example.attacker", "desk.example"));
     TEST_ASSERT_FALSE(desk_http_origin_matches_host(NULL, "desk.local"));
-    TEST_ASSERT_FALSE(desk_http_origin_matches_host("http://desk.local", ""));
+    TEST_ASSERT_FALSE(desk_http_origin_matches_host("https://desk.local", ""));
 }
 
 int main(void)
