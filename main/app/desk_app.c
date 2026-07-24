@@ -75,6 +75,7 @@ bool desk_app_init(desk_app_t *app, const desk_platform_t *platform, const desk_
     }
 
     desk_controller_init(&app->controller, config);
+    desk_command_arbiter_init(&app->command_arbiter, DESK_CONTROL_MODE_HYBRID);
     desk_input_filter_init(&app->input_filter, DESK_SAFETY_INPUT_RELEASE_DEBOUNCE_MS);
     app->last_step_ms = app->platform.now_ms(app->platform.context);
     app->last_outputs.state = DESK_STATE_SAFE_START;
@@ -100,6 +101,19 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     }
     desk_inputs_t inputs =
         desk_input_filter_update(&app->input_filter, &raw_inputs, filter_elapsed);
+    desk_resolved_controls_t controls = desk_command_arbiter_resolve(
+        &app->command_arbiter,
+        &(desk_local_controls_t){
+            .up_pressed = inputs.up_pressed,
+            .down_pressed = inputs.down_pressed,
+            .calibrate_pressed = inputs.calibrate_pressed,
+        },
+        now_ms);
+    inputs.up_pressed = controls.up_pressed;
+    inputs.down_pressed = controls.down_pressed;
+    inputs.calibrate_pressed = controls.calibrate_pressed;
+    app->last_control_source = controls.source;
+    app->remote_control_active = controls.remote_active;
     update_clear_error_request(app, &inputs, now_ms);
     desk_outputs_t outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
 
@@ -126,4 +140,29 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     }
     app->last_outputs = outputs;
     return outputs;
+}
+
+bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode)
+{
+    if (app == NULL || !app->initialized) {
+        return false;
+    }
+    return desk_command_arbiter_set_mode(&app->command_arbiter, mode);
+}
+
+bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id)
+{
+    if (app == NULL || !app->initialized) {
+        return false;
+    }
+    return desk_command_arbiter_acquire_remote_lease(&app->command_arbiter, lease_id);
+}
+
+bool desk_app_submit_remote_command(desk_app_t *app, const desk_remote_command_t *command)
+{
+    if (app == NULL || !app->initialized || command == NULL) {
+        return false;
+    }
+    return desk_command_arbiter_submit_remote(&app->command_arbiter, command,
+                                              app->platform.now_ms(app->platform.context));
 }

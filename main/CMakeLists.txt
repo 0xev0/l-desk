@@ -3,6 +3,7 @@ idf_component_register(
         "app_main.c"
         "app/desk_app.c"
         "app/desk_app_runtime.c"
+        "app/desk_command_arbiter.c"
         "app/desk_input_filter.c"
         "domain/desk_controller.c"
         "domain/motor_axis.c"

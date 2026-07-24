@@ -59,6 +59,16 @@ target_include_directories(test_bts7960_sequence PRIVATE
 
 add_test(NAME test_bts7960_sequence COMMAND test_bts7960_sequence)
 
+add_executable(test_command_arbiter
+    test_command_arbiter.c
+    ../main/app/desk_command_arbiter.c
+)
+target_include_directories(test_command_arbiter PRIVATE
+    ../main/app
+)
+
+add_test(NAME test_command_arbiter COMMAND test_command_arbiter)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c
@@ -154,6 +164,7 @@ add_executable(test_desk_app
     test_desk_app.c
     fake_platform.c
     ../main/app/desk_app.c
+    ../main/app/desk_command_arbiter.c
     ../main/app/desk_input_filter.c
     ../main/domain/desk_controller.c
 )

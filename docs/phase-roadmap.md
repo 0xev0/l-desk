@@ -22,6 +22,16 @@ tuning and loaded validation pending.
 
 P1/P2 become release-ready together only after final hardware commissioning.
 
+## P2.5: Control-Source Foundation
+
+Status: implemented and host/build verified; network transport pending.
+
+- Local-only, hybrid, and mobile-only operating modes
+- Exclusive remote lease with sequence anti-replay and 250 ms expiry
+- Local preemption revokes the remote session
+- Bounded static cross-core request queue
+- Remote high-level calibration/error-clear gesture for buttonless operation
+
 ## P3: Local Presets
 
 Start only after P1/P2 pass sustained loaded use.

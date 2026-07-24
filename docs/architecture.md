@@ -18,6 +18,11 @@ time, then updates a caller-owned `desk_controller_t`.
 Three axes are fixed at compile time through `DESK_AXIS_COUNT = 3`. Per-axis
 state is held in static arrays, making each control tick O(3) with bounded work.
 
+`desk_command_arbiter` is a second pure-C boundary above the controller. It
+selects local, hybrid, or mobile-only semantic controls and enforces exclusive
+remote leases, sequence ordering, and 250 ms expiry. Cross-core producers use
+a bounded static queue; only the control task mutates the arbiter or controller.
+
 ## Runtime
 
 Every nominal 10 ms iteration:
@@ -100,7 +105,7 @@ calibration. No preset or absolute automatic positioning is implemented.
 
 ## Extension Points
 
-Future command sources submit semantic requests above `desk_app`; they cannot
-receive motor/GPIO handles. Presets need a separate position-command service and
-NVS adapter. WiFi/BLE need bounded queues into the application layer, with local
-safety retaining final authority.
+Future transports submit semantic requests above `desk_app`; they cannot
+receive motor/GPIO handles. Presets need a separate position-command service
+and NVS adapter. WiFi/BLE consume the existing bounded application queue, with
+local and physical safety retaining final authority.

@@ -1,0 +1,70 @@
+# Control Sources
+
+## Operating Modes
+
+The application supports three explicit modes above the safety controller:
+
+| Mode | Physical controls | Authenticated remote controls |
+|---|---|---|
+| `LOCAL_ONLY` | Used | Rejected |
+| `HYBRID` | Used and takes priority | Used while no local control is active |
+| `MOBILE_ONLY` | Motion controls ignored | Used |
+
+Limits, Hall feedback, the monitored E-stop, timing checks, and output
+validation are never disabled by these modes. `MOBILE_ONLY` permits omitting
+UP, DOWN, and CALIBRATE buttons, but it does not permit omitting the physical
+E-stop or NC endstops. Unconnected active-low button inputs remain released
+through their configured pull-ups.
+
+The compile-time default is `HYBRID`. Persistent selection will be added with
+the configuration store; until then it returns to `HYBRID` after reboot.
+
+## Remote Lease
+
+Remote movement is hold-to-run, not a durable command:
+
+1. An authenticated client obtains a fresh nonzero 64-bit lease ID.
+2. Each command carries that lease ID, a strictly increasing sequence number,
+   an action, and a validity interval no longer than 250 ms.
+3. The client refreshes the command approximately every 100 ms while the user
+   continues to hold the UI control.
+4. At the exact expiry deadline, all remote control resolves to STOP.
+5. Replay, out-of-order sequence, wrong lease, second-client lease, and
+   overlong TTL are rejected.
+
+STOP, heartbeat expiry, local preemption, or a mode change revokes the complete
+lease. Old packets cannot reacquire it; the authenticated transport must issue
+a new lease. The runtime transfers requests to the control task through a
+bounded static queue. A full queue rejects the request, while lease expiry
+still guarantees STOP.
+
+## Priority
+
+The order is:
+
+1. E-stop, hardware/input faults, limits, Hall faults, and controller timing
+2. Local controls in `HYBRID`
+3. The one authorized live remote lease
+4. STOP
+
+Local UP plus DOWN remains a latched controller error. A local action that
+arrives during remote movement revokes the remote lease; direction reversal
+still passes through the normal STOP and 300 ms dead time.
+
+Remote calibration and remote error clear use the same CALIBRATE hold/release
+gesture as the physical button. This is necessary for a buttonless
+installation, but remains subject to authentication, heartbeat expiry, healthy
+safety inputs, and the domain state machine. The transport never submits raw
+GPIO, PWM, enable, or per-axis commands.
+
+## Transport Boundary
+
+The command arbiter and its tests do not depend on WiFi, BLE, HTTP, WebSocket,
+JSON, or ESP-IDF. A future transport may only enqueue:
+
+- acquire remote lease;
+- high-level UP, DOWN, CALIBRATE, or STOP;
+- select an allowed control mode.
+
+Network parsing, authentication, provisioning, rate limits, and client
+ownership remain outside the control task.

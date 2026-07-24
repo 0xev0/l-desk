@@ -27,11 +27,16 @@ Implemented:
 - 750 ms endstop alignment window for all three arrival orders
 - Static pinned control task and bounded asynchronous platform logging
 - Runtime minimum-free-heap and dropped-log diagnostics for soak testing
+- Tested local/hybrid/mobile-only command arbiter with exclusive 250 ms leases
 - Injectable HAL, host fake, watchdog, strict warnings, ASan, and UBSan tests
 - Deliberate error clear: hold CALIBRATE for 2 seconds, then release
 
-Not implemented: presets, automatic positioning, NVS, display, WiFi, BLE,
-Home Assistant, OTA, or remote movement.
+The transport for remote movement is not implemented yet; the host-tested
+application boundary and bounded control queue are in place. See
+[control sources](docs/control-sources.md).
+
+Not implemented: presets, automatic positioning, NVS, display, WiFi/BLE
+transport, Home Assistant, or OTA.
 
 ## Target Hardware
 

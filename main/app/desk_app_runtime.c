@@ -5,7 +5,21 @@
 #include "board_config.h"
 #include "esp_desk_platform.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
+
+typedef enum {
+    DESK_RUNTIME_REQUEST_REMOTE_LEASE = 0,
+    DESK_RUNTIME_REQUEST_REMOTE_COMMAND,
+    DESK_RUNTIME_REQUEST_CONTROL_MODE,
+} desk_runtime_request_kind_t;
+
+typedef struct {
+    desk_runtime_request_kind_t kind;
+    uint64_t remote_lease_id;
+    desk_remote_command_t remote_command;
+    desk_control_mode_t control_mode;
+} desk_runtime_request_t;
 
 typedef struct {
     desk_app_t app;
@@ -15,10 +29,35 @@ typedef struct {
     StaticTask_t task_storage;
     StackType_t task_stack[BOARD_CONTROL_TASK_STACK_WORDS];
     TaskHandle_t task_handle;
+    QueueHandle_t request_queue;
+    StaticQueue_t request_queue_storage;
+    uint8_t request_queue_buffer[BOARD_CONTROL_REQUEST_QUEUE_DEPTH *
+                                 sizeof(desk_runtime_request_t)];
     atomic_bool ready;
 } desk_app_runtime_t;
 
 static desk_app_runtime_t runtime;
+
+static void process_control_requests(desk_app_runtime_t *desk_runtime)
+{
+    for (size_t index = 0U; index < BOARD_CONTROL_REQUEST_QUEUE_DEPTH; ++index) {
+        desk_runtime_request_t request;
+        if (xQueueReceive(desk_runtime->request_queue, &request, 0U) != pdTRUE) {
+            return;
+        }
+        switch (request.kind) {
+        case DESK_RUNTIME_REQUEST_REMOTE_LEASE:
+            (void)desk_app_acquire_remote_lease(&desk_runtime->app, request.remote_lease_id);
+            break;
+        case DESK_RUNTIME_REQUEST_REMOTE_COMMAND:
+            (void)desk_app_submit_remote_command(&desk_runtime->app, &request.remote_command);
+            break;
+        case DESK_RUNTIME_REQUEST_CONTROL_MODE:
+            (void)desk_app_set_control_mode(&desk_runtime->app, request.control_mode);
+            break;
+        }
+    }
+}
 
 static void control_task(void *argument)
 {
@@ -37,6 +76,7 @@ static void control_task(void *argument)
     atomic_store_explicit(&desk_runtime->ready, true, memory_order_release);
     TickType_t last_wake_tick = xTaskGetTickCount();
     while (true) {
+        process_control_requests(desk_runtime);
         (void)desk_app_step(&desk_runtime->app);
         vTaskDelayUntil(&last_wake_tick, period_ticks);
     }
@@ -58,6 +98,12 @@ bool desk_app_start(void)
     runtime.config.maximum_duty_permille = BOARD_MOTOR_MAX_DUTY_PERMILLE;
     runtime.config.synchronization_trim_permille = BOARD_SYNCHRONIZATION_TRIM_PERMILLE;
     runtime.platform = esp_desk_platform_create(&runtime.platform_context);
+    runtime.request_queue = xQueueCreateStatic(
+        BOARD_CONTROL_REQUEST_QUEUE_DEPTH, sizeof(desk_runtime_request_t),
+        runtime.request_queue_buffer, &runtime.request_queue_storage);
+    if (runtime.request_queue == NULL) {
+        return false;
+    }
 
     runtime.task_handle = xTaskCreateStaticPinnedToCore(
         control_task, "desk_control", BOARD_CONTROL_TASK_STACK_WORDS, &runtime,
@@ -86,4 +132,38 @@ bool desk_app_get_runtime_diagnostics(desk_runtime_diagnostics_t *diagnostics)
         .logger_stack_high_water_words = platform_diagnostics.logger_stack_high_water_words,
     };
     return true;
+}
+
+static bool queue_runtime_request(const desk_runtime_request_t *request)
+{
+    return request != NULL && runtime.request_queue != NULL &&
+           atomic_load_explicit(&runtime.ready, memory_order_acquire) &&
+           xQueueSend(runtime.request_queue, request, 0U) == pdTRUE;
+}
+
+bool desk_app_queue_remote_command(const desk_remote_command_t *command)
+{
+    if (command == NULL) {
+        return false;
+    }
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_REMOTE_COMMAND,
+        .remote_command = *command,
+    });
+}
+
+bool desk_app_queue_remote_lease(uint64_t lease_id)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_REMOTE_LEASE,
+        .remote_lease_id = lease_id,
+    });
+}
+
+bool desk_app_queue_control_mode(desk_control_mode_t mode)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_CONTROL_MODE,
+        .control_mode = mode,
+    });
 }

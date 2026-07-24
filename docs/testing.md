@@ -2,7 +2,7 @@
 
 ## Host Suite
 
-Thirteen CTest executables cover domain, application, input filtering, fake HAL,
+Fourteen CTest executables cover domain, application, input filtering, fake HAL,
 BTS7960 sequencing, and output invariants without ESP-IDF hardware.
 
 ```sh
@@ -30,9 +30,10 @@ LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
 ```
 
 Merge with `llvm-profdata` and report with `llvm-cov` over
-`desk_controller.c`, `motor_axis.c`, `desk_app.c`, and `desk_input_filter.c`.
-The current result is 95.65% lines, 95.73% regions, and 100% functions. Keep
-line coverage at or above 95% and all safety transitions explicitly tested.
+all host-testable domain, application, and output-sequencing modules. The
+current result is 96.38% lines, 96.23% regions, 82.98% branches, and 100%
+functions. Keep line coverage at or above 95% and all safety transitions
+explicitly tested.
 
 ## Covered Behavior
 
@@ -47,6 +48,8 @@ line coverage at or above 95% and all safety transitions explicitly tested.
 - Hall missing, wrong direction, stall, warning trim, and hard skew
 - Invalid time, arguments, configuration, and motor output vectors
 - BTS7960 STOP/start/reversal ordering and output-register readback invariants
+- Local/hybrid/mobile-only arbitration, exclusive lease, replay, expiry,
+  preemption, and mobile-only error clear
 - Explicit long-hold/release error clear without automatic motion
 - Deterministic repeated ticks and saturating timing arithmetic
 
