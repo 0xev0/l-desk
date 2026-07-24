@@ -14,14 +14,20 @@
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
+#include "esp_ota_update.h"
 #include "esp_random.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define DESK_HTTP_BODY_MAX_SIZE 256U
 #define DESK_HTTP_HEADER_MAX_SIZE 256U
 #define DESK_HTTP_RECEIVE_TIMEOUT_LIMIT 3U
 #define DESK_HTTP_WEBSOCKET_PROTOCOL "desk-control-v1"
+#define DESK_HTTP_OTA_CHUNK_SIZE 1024U
+#define DESK_HTTP_INHIBIT_TIMEOUT_MS 500U
+#define DESK_HTTP_INHIBIT_POLL_MS 10U
 
 static const char *const TAG = "desk_http";
 static const char *const SESSION_COOKIE = "desk_session";
@@ -162,6 +168,13 @@ static bool form_content_type(httpd_req_t *request)
            strcmp(content_type, "application/x-www-form-urlencoded") == 0;
 }
 
+static bool binary_content_type(httpd_req_t *request)
+{
+    char content_type[64];
+    return get_header(request, "Content-Type", content_type, sizeof(content_type)) &&
+           strcmp(content_type, "application/octet-stream") == 0;
+}
+
 static bool session_from_request(httpd_req_t *request,
                                  char session[DESK_AUTH_SECRET_TEXT_SIZE])
 {
@@ -190,6 +203,22 @@ static bool desk_is_stopped(const desk_app_status_t *status)
         }
     }
     return true;
+}
+
+static bool wait_for_motion_inhibit(void)
+{
+    for (uint32_t elapsed = 0U; elapsed <= DESK_HTTP_INHIBIT_TIMEOUT_MS;
+         elapsed += DESK_HTTP_INHIBIT_POLL_MS) {
+        desk_app_status_t status;
+        if (desk_app_get_runtime_status(&status) && status.motion_inhibited &&
+            desk_is_stopped(&status)) {
+            return true;
+        }
+        if (elapsed < DESK_HTTP_INHIBIT_TIMEOUT_MS) {
+            vTaskDelay(pdMS_TO_TICKS(DESK_HTTP_INHIBIT_POLL_MS));
+        }
+    }
+    return false;
 }
 
 static const char *state_name(desk_state_t state)
@@ -296,7 +325,7 @@ static esp_err_t status_handler(httpd_req_t *request)
         "\"source\":\"%s\",\"remote_active\":%s,\"referenced\":%s,"
         "\"feedback_warning\":%s,\"emergency\":%s,\"provisioning\":%s,"
         "\"wifi_connected\":%s,\"preset_target_reached\":%s,"
-        "\"preset_storage_fault\":%s,\"presets\":["
+        "\"preset_storage_fault\":%s,\"motion_inhibited\":%s,\"presets\":["
         "{\"valid\":%s,\"target_um\":%ld},"
         "{\"valid\":%s,\"target_um\":%ld},"
         "{\"valid\":%s,\"target_um\":%ld}],\"axes\":["
@@ -320,6 +349,7 @@ static esp_err_t status_handler(httpd_req_t *request)
         api->wifi->station_connected ? "true" : "false",
         status.preset_target_reached ? "true" : "false",
         api->store->preset_storage_fault ? "true" : "false",
+        status.motion_inhibited ? "true" : "false",
         status.presets.valid[0] ? "true" : "false",
         (long)status.presets.target_um[0],
         status.presets.valid[1] ? "true" : "false",
@@ -356,6 +386,70 @@ static esp_err_t status_handler(httpd_req_t *request)
         return send_error(request, HTTPD_500, "status_overflow");
     }
     return send_json(request, HTTPD_200, response);
+}
+
+static esp_err_t ota_handler(httpd_req_t *request)
+{
+    esp_http_api_t *api = request->user_ctx;
+    if (!same_origin(request) || !request_is_authenticated(api, request) ||
+        !binary_content_type(request)) {
+        return send_error(request, "403 Forbidden", "update_forbidden");
+    }
+
+    desk_app_status_t status;
+    if (!desk_app_get_runtime_status(&status) || !desk_is_stopped(&status) ||
+        status.remote_control_active || request->content_len == 0U) {
+        return send_error(request, "409 Conflict", "desk_must_be_stopped");
+    }
+    if (!desk_app_queue_motion_inhibit(true) || !wait_for_motion_inhibit()) {
+        return send_error(request, "503 Service Unavailable",
+                          "maintenance_inhibit_failed");
+    }
+
+    esp_ota_update_t update;
+    esp_err_t result = esp_ota_update_begin(&update, request->content_len);
+    uint8_t chunk[DESK_HTTP_OTA_CHUNK_SIZE];
+    size_t received = 0U;
+    unsigned timeouts = 0U;
+    while (result == ESP_OK && received < request->content_len) {
+        size_t remaining = request->content_len - received;
+        size_t requested = remaining < sizeof(chunk) ? remaining : sizeof(chunk);
+        int chunk_size = httpd_req_recv(request, (char *)chunk, requested);
+        if (chunk_size == HTTPD_SOCK_ERR_TIMEOUT &&
+            timeouts < DESK_HTTP_RECEIVE_TIMEOUT_LIMIT) {
+            ++timeouts;
+            continue;
+        }
+        if (chunk_size <= 0) {
+            result = ESP_ERR_INVALID_RESPONSE;
+            break;
+        }
+        timeouts = 0U;
+        result = esp_ota_update_write(&update, chunk, (size_t)chunk_size);
+        if (result == ESP_OK) {
+            received += (size_t)chunk_size;
+        }
+    }
+    if (result == ESP_OK) {
+        result = esp_ota_update_finish(&update);
+    } else {
+        esp_ota_update_abort(&update);
+    }
+    if (result != ESP_OK) {
+        esp_ota_update_abort(&update);
+        (void)desk_app_queue_motion_inhibit(false);
+        ESP_LOGE(TAG, "signed firmware update rejected: %s",
+                 esp_err_to_name(result));
+        return send_error(request, HTTPD_400, "update_rejected");
+    }
+
+    ESP_LOGW(TAG, "signed firmware staged in %s; rebooting", update.partition->label);
+    result = send_json(request, HTTPD_200, "{\"rebooting\":true}");
+    if (result == ESP_OK) {
+        vTaskDelay(pdMS_TO_TICKS(200U));
+        esp_restart();
+    }
+    return result;
 }
 
 static esp_err_t diagnostics_handler(httpd_req_t *request)
@@ -777,6 +871,10 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
         {.uri = "/api/v1/preset",
          .method = HTTP_POST,
          .handler = preset_handler,
+         .user_ctx = api},
+        {.uri = "/api/v1/update",
+         .method = HTTP_POST,
+         .handler = ota_handler,
          .user_ctx = api},
         {.uri = "/api/v1/control",
          .method = HTTP_GET,

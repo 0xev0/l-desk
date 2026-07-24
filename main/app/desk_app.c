@@ -140,6 +140,11 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     }
     desk_inputs_t inputs =
         desk_input_filter_update(&app->input_filter, &raw_inputs, filter_elapsed);
+    if (app->motion_release_pending && !inputs.up_pressed && !inputs.down_pressed &&
+        !inputs.calibrate_pressed) {
+        app->motion_inhibited = false;
+        app->motion_release_pending = false;
+    }
     desk_resolved_controls_t controls = desk_command_arbiter_resolve(
         &app->command_arbiter,
         &(desk_local_controls_t){
@@ -148,6 +153,13 @@ desk_outputs_t desk_app_step(desk_app_t *app)
             .calibrate_pressed = inputs.calibrate_pressed,
         },
         now_ms);
+    if (app->motion_inhibited) {
+        desk_command_arbiter_cancel_remote(&app->command_arbiter);
+        controls = (desk_resolved_controls_t){
+            .action = DESK_CONTROL_ACTION_STOP,
+        };
+        desk_preset_controller_reset(&app->preset_controller);
+    }
     inputs.up_pressed = controls.up_pressed;
     inputs.down_pressed = controls.down_pressed;
     inputs.calibrate_pressed = controls.calibrate_pressed;
@@ -189,6 +201,22 @@ bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode)
         return false;
     }
     return desk_command_arbiter_set_mode(&app->command_arbiter, mode);
+}
+
+bool desk_app_set_motion_inhibited(desk_app_t *app, bool inhibited)
+{
+    if (app == NULL || !app->initialized) {
+        return false;
+    }
+    if (inhibited) {
+        app->motion_inhibited = true;
+        app->motion_release_pending = false;
+        desk_command_arbiter_cancel_remote(&app->command_arbiter);
+        desk_preset_controller_reset(&app->preset_controller);
+    } else if (app->motion_inhibited) {
+        app->motion_release_pending = true;
+    }
+    return true;
 }
 
 bool desk_app_set_preset_target(desk_app_t *app, size_t slot, int32_t target_um,
@@ -242,6 +270,7 @@ bool desk_app_get_status(const desk_app_t *app, desk_app_status_t *status)
         .presets = app->presets,
         .remote_control_active = app->remote_control_active,
         .preset_target_reached = app->preset_controller.target_reached,
+        .motion_inhibited = app->motion_inhibited,
     };
     return true;
 }

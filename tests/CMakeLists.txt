@@ -102,6 +102,7 @@ add_executable(test_boot_health
 )
 target_include_directories(test_boot_health PRIVATE
     ../main/app
+    ../main/diagnostics
     ../main/domain
     ../main/hal
 )
@@ -276,6 +277,7 @@ add_executable(test_desk_app
 target_include_directories(test_desk_app PRIVATE
     .
     ../main/app
+    ../main/diagnostics
     ../main/domain
     ../main/hal
 )

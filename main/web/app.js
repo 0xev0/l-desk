@@ -69,6 +69,9 @@ function updateControls(status) {
   $$(".preset-save").forEach((button) => {
     button.disabled = !canCapture;
   });
+  $("#update-firmware").disabled = !state.authenticated || status.remote_active ||
+    status.motion_inhibited || !["idle", "unreferenced", "error"].includes(status.state) ||
+    $("#firmware-file").files.length !== 1;
   $$(".segments button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === status.mode);
     button.disabled = status.remote_active;
@@ -281,6 +284,31 @@ $$(".preset-save").forEach((button) => {
       await pollStatus();
     }
   });
+});
+
+$("#firmware-file").addEventListener("change", () => {
+  if (state.status !== null) {
+    updateControls(state.status);
+  }
+});
+
+$("#update-firmware").addEventListener("click", async () => {
+  stopMotion();
+  const file = $("#firmware-file").files[0];
+  if (file === undefined) {
+    return;
+  }
+  $("#update-firmware").disabled = true;
+  try {
+    await request("/api/v1/update", {
+      method: "POST",
+      headers: {"Content-Type": "application/octet-stream"},
+      body: file,
+    });
+    $("#connection-label").textContent = "Reiniciando";
+  } catch (_) {
+    await pollStatus();
+  }
 });
 
 $("#wifi-form").addEventListener("submit", async (event) => {

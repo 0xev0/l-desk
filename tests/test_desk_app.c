@@ -448,6 +448,42 @@ static void preset_motion_is_inhibited_without_a_position_reference(void)
     assert_outputs_stopped(fake.outputs);
 }
 
+static void maintenance_inhibit_stops_and_blocks_every_control_source(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = app_test_config();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    run_steps(&app, &fake, 52U);
+
+    fake.inputs.up_pressed = true;
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, fake.outputs.state);
+    TEST_ASSERT_TRUE(desk_app_set_motion_inhibited(&app, true));
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+    run_steps(&app, &fake, 20U);
+    assert_outputs_stopped(fake.outputs);
+
+    desk_app_status_t status;
+    TEST_ASSERT_TRUE(desk_app_get_status(&app, &status));
+    TEST_ASSERT_TRUE(status.motion_inhibited);
+    TEST_ASSERT_FALSE(status.remote_control_active);
+    TEST_ASSERT_TRUE(desk_app_set_motion_inhibited(&app, false));
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_IDLE, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+    fake.inputs.up_pressed = false;
+    run_steps(&app, &fake, 6U);
+    fake.inputs.up_pressed = true;
+    run_steps(&app, &fake, 6U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, fake.outputs.state);
+    TEST_ASSERT_FALSE(desk_app_set_motion_inhibited(NULL, true));
+}
+
 int main(void)
 {
     app_runs_through_injected_platform();
@@ -463,5 +499,6 @@ int main(void)
     mobile_only_can_clear_an_error_without_physical_buttons();
     remote_preset_is_hold_to_run_and_latches_stop_at_target();
     preset_motion_is_inhibited_without_a_position_reference();
+    maintenance_inhibit_stops_and_blocks_every_control_source();
     return 0;
 }

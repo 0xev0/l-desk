@@ -29,6 +29,7 @@ idf_component_register(
         "platform/esp_gpio_hal.c"
         "platform/esp_hall_hal.c"
         "platform/esp_ota_guard.c"
+        "platform/esp_ota_update.c"
         "platform/esp_time_hal.c"
     INCLUDE_DIRS
         "."

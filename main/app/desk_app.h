@@ -27,6 +27,7 @@ typedef struct {
     desk_preset_bank_t presets;
     bool remote_control_active;
     bool preset_target_reached;
+    bool motion_inhibited;
 } desk_app_status_t;
 
 typedef struct {
@@ -44,12 +45,15 @@ typedef struct {
     bool remote_control_active;
     bool clear_error_timing;
     bool clear_error_armed;
+    bool motion_inhibited;
+    bool motion_release_pending;
     bool initialized;
 } desk_app_t;
 
 bool desk_app_init(desk_app_t *app, const desk_platform_t *platform, const desk_config_t *config);
 desk_outputs_t desk_app_step(desk_app_t *app);
 bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode);
+bool desk_app_set_motion_inhibited(desk_app_t *app, bool inhibited);
 bool desk_app_set_preset_target(desk_app_t *app, size_t slot, int32_t target_um,
                                 int32_t maximum_travel_um);
 bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id);
@@ -66,3 +70,4 @@ bool desk_app_queue_remote_release(uint64_t lease_id);
 bool desk_app_queue_remote_command(const desk_remote_command_t *command);
 bool desk_app_queue_control_mode(desk_control_mode_t mode);
 bool desk_app_queue_preset_target(size_t slot, int32_t target_um);
+bool desk_app_queue_motion_inhibit(bool inhibited);

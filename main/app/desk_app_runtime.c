@@ -14,6 +14,7 @@ typedef enum {
     DESK_RUNTIME_REQUEST_REMOTE_COMMAND,
     DESK_RUNTIME_REQUEST_CONTROL_MODE,
     DESK_RUNTIME_REQUEST_PRESET_TARGET,
+    DESK_RUNTIME_REQUEST_MOTION_INHIBIT,
 } desk_runtime_request_kind_t;
 
 typedef struct {
@@ -23,6 +24,7 @@ typedef struct {
     desk_control_mode_t control_mode;
     size_t preset_slot;
     int32_t preset_target_um;
+    bool motion_inhibited;
 } desk_runtime_request_t;
 
 typedef struct {
@@ -81,6 +83,10 @@ static void process_control_requests(desk_app_runtime_t *desk_runtime)
             (void)desk_app_set_preset_target(&desk_runtime->app, request.preset_slot,
                                              request.preset_target_um,
                                              (int32_t)BOARD_ACTUATOR_TRAVEL_UM);
+            break;
+        case DESK_RUNTIME_REQUEST_MOTION_INHIBIT:
+            (void)desk_app_set_motion_inhibited(&desk_runtime->app,
+                                                request.motion_inhibited);
             break;
         }
     }
@@ -235,5 +241,13 @@ bool desk_app_queue_preset_target(size_t slot, int32_t target_um)
         .kind = DESK_RUNTIME_REQUEST_PRESET_TARGET,
         .preset_slot = slot,
         .preset_target_um = target_um,
+    });
+}
+
+bool desk_app_queue_motion_inhibit(bool inhibited)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_MOTION_INHIBIT,
+        .motion_inhibited = inhibited,
     });
 }

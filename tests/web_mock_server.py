@@ -107,6 +107,15 @@ class DeskMockHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def do_POST(self):
+        if self.path == "/api/v1/update":
+            if not self.authenticated():
+                self.send_json(HTTPStatus.UNAUTHORIZED,
+                               {"error": "authentication_required"})
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            self.rfile.read(length)
+            self.send_json(HTTPStatus.OK, {"rebooting": True})
+            return
         try:
             form = self.read_form()
         except (UnicodeDecodeError, ValueError):
