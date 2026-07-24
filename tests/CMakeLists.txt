@@ -111,6 +111,16 @@ target_include_directories(test_form_codec PRIVATE
 
 add_test(NAME test_form_codec COMMAND test_form_codec)
 
+add_executable(test_http_security
+    test_http_security.c
+    ../main/network/desk_http_security.c
+)
+target_include_directories(test_http_security PRIVATE
+    ../main/network
+)
+
+add_test(NAME test_http_security COMMAND test_http_security)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c
