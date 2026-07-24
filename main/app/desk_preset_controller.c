@@ -44,6 +44,41 @@ static bool average_position(const desk_inputs_t *inputs, int32_t *average_um)
     return true;
 }
 
+bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot,
+                              const desk_inputs_t *inputs, bool position_reference_valid,
+                              bool feedback_warning, int32_t maximum_travel_um,
+                              int32_t maximum_skew_um)
+{
+    if (bank == NULL || inputs == NULL || slot >= DESK_PRESET_COUNT ||
+        !position_reference_valid || feedback_warning || maximum_travel_um <= 0 ||
+        maximum_skew_um < 0) {
+        return false;
+    }
+
+    int32_t minimum = maximum_travel_um;
+    int32_t maximum = 0;
+    for (size_t axis = 0U; axis < DESK_AXIS_COUNT; ++axis) {
+        int32_t position = inputs->axis[axis].position_um;
+        if (!inputs->axis[axis].hall_valid || position < 0 ||
+            position > maximum_travel_um) {
+            return false;
+        }
+        if (position < minimum) {
+            minimum = position;
+        }
+        if (position > maximum) {
+            maximum = position;
+        }
+    }
+    if ((int64_t)maximum - minimum > maximum_skew_um) {
+        return false;
+    }
+
+    int32_t average_um;
+    return average_position(inputs, &average_um) &&
+           desk_preset_bank_set(bank, slot, average_um, maximum_travel_um);
+}
+
 static bool target_has_been_reached(const desk_preset_controller_t *controller,
                                     int32_t current_um)
 {

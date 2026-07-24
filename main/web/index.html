@@ -59,20 +59,41 @@
     </section>
 
     <section class="controls" aria-label="Movimiento">
-      <button id="move-up" class="motion" type="button" data-action="1"
+      <button id="move-up" class="motion hold-control" type="button" data-action="1"
               aria-label="Subir">
         <span aria-hidden="true">&#8593;</span>
         <small>SUBIR</small>
       </button>
-      <button id="calibrate" class="calibrate" type="button" data-action="3">
+      <button id="calibrate" class="calibrate hold-control" type="button" data-action="3">
         <span>CAL</span>
         <small>CALIBRAR</small>
       </button>
-      <button id="move-down" class="motion" type="button" data-action="2"
+      <button id="move-down" class="motion hold-control" type="button" data-action="2"
               aria-label="Bajar">
         <span aria-hidden="true">&#8595;</span>
         <small>BAJAR</small>
       </button>
+    </section>
+
+    <section class="presets" aria-label="Alturas memorizadas">
+      <article>
+        <button class="preset-motion hold-control" type="button" data-slot="0"
+                data-action="4" aria-label="Mover a memoria 1">M1</button>
+        <strong id="preset-1-height">--</strong>
+        <button class="preset-save" type="button" data-slot="0">Guardar</button>
+      </article>
+      <article>
+        <button class="preset-motion hold-control" type="button" data-slot="1"
+                data-action="5" aria-label="Mover a memoria 2">M2</button>
+        <strong id="preset-2-height">--</strong>
+        <button class="preset-save" type="button" data-slot="1">Guardar</button>
+      </article>
+      <article>
+        <button class="preset-motion hold-control" type="button" data-slot="2"
+                data-action="6" aria-label="Mover a memoria 3">M3</button>
+        <strong id="preset-3-height">--</strong>
+        <button class="preset-save" type="button" data-slot="2">Guardar</button>
+      </article>
     </section>
 
     <section class="settings">

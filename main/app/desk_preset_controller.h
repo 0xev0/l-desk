@@ -26,6 +26,10 @@ void desk_preset_controller_reset(desk_preset_controller_t *controller);
 bool desk_preset_bank_set(desk_preset_bank_t *bank, size_t slot, int32_t target_um,
                           int32_t maximum_travel_um);
 bool desk_preset_bank_get(const desk_preset_bank_t *bank, size_t slot, int32_t *target_um);
+bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot,
+                              const desk_inputs_t *inputs, bool position_reference_valid,
+                              bool feedback_warning, int32_t maximum_travel_um,
+                              int32_t maximum_skew_um);
 bool desk_preset_controller_update(
     desk_preset_controller_t *controller, const desk_preset_bank_t *bank, size_t slot,
     const desk_inputs_t *inputs, bool position_reference_valid, motor_command_t *direction);

@@ -246,6 +246,63 @@ main {
   opacity: 0.38;
 }
 
+.presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.presets article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  border: 1px solid #c9ccca;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.preset-motion {
+  grid-row: 1 / 3;
+  border: 0;
+  border-right: 1px solid #c9ccca;
+  background: #17191c;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+}
+
+.preset-motion.pressed {
+  background: #26a69a;
+  color: #0e2b28;
+}
+
+.presets strong {
+  min-width: 0;
+  padding: 10px 9px 5px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.preset-save {
+  padding: 5px 9px 10px;
+  border: 0;
+  background: transparent;
+  color: #39746f;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.preset-motion:disabled,
+.preset-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .settings,
 .provisioning {
   margin-top: 18px;
@@ -405,6 +462,14 @@ dialog::backdrop {
 
   .controls button {
     height: 118px;
+  }
+
+  .presets {
+    grid-template-columns: 1fr;
+  }
+
+  .presets article {
+    grid-template-columns: 54px minmax(0, 1fr);
   }
 
   .provisioning form {

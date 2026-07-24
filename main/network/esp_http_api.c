@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "board_config.h"
 #include "desk_app.h"
 #include "desk_control_protocol.h"
 #include "desk_form_codec.h"
@@ -282,13 +283,17 @@ static esp_err_t status_handler(httpd_req_t *request)
         return send_error(request, "503 Service Unavailable", "control_unavailable");
     }
 
-    char response[1536];
+    char response[2048];
     int written = snprintf(
         response, sizeof(response),
         "{\"state\":\"%s\",\"error\":\"%s\",\"mode\":\"%s\","
         "\"source\":\"%s\",\"remote_active\":%s,\"referenced\":%s,"
         "\"feedback_warning\":%s,\"emergency\":%s,\"provisioning\":%s,"
-        "\"wifi_connected\":%s,\"axes\":["
+        "\"wifi_connected\":%s,\"preset_target_reached\":%s,"
+        "\"preset_storage_fault\":%s,\"presets\":["
+        "{\"valid\":%s,\"target_um\":%ld},"
+        "{\"valid\":%s,\"target_um\":%ld},"
+        "{\"valid\":%s,\"target_um\":%ld}],\"axes\":["
         "{\"position_um\":%ld,\"hall\":%ld,\"hall_valid\":%s,"
         "\"upper\":%s,\"lower\":%s,\"direction\":%u,\"duty\":%u,\"enabled\":%s},"
         "{\"position_um\":%ld,\"hall\":%ld,\"hall_valid\":%s,"
@@ -305,6 +310,14 @@ static esp_err_t status_handler(httpd_req_t *request)
         status.inputs.emergency_active ? "true" : "false",
         api->wifi->provisioning_active ? "true" : "false",
         api->wifi->station_connected ? "true" : "false",
+        status.preset_target_reached ? "true" : "false",
+        api->store->preset_storage_fault ? "true" : "false",
+        status.presets.valid[0] ? "true" : "false",
+        (long)status.presets.target_um[0],
+        status.presets.valid[1] ? "true" : "false",
+        (long)status.presets.target_um[1],
+        status.presets.valid[2] ? "true" : "false",
+        (long)status.presets.target_um[2],
         (long)status.inputs.axis[0].position_um, (long)status.inputs.axis[0].hall_count,
         status.inputs.axis[0].hall_valid ? "true" : "false",
         status.inputs.axis[0].upper_limit_active ? "true" : "false",
@@ -335,6 +348,54 @@ static esp_err_t status_handler(httpd_req_t *request)
         return send_error(request, HTTPD_500, "status_overflow");
     }
     return send_json(request, HTTPD_200, response);
+}
+
+static esp_err_t preset_handler(httpd_req_t *request)
+{
+    esp_http_api_t *api = request->user_ctx;
+    if (!same_origin(request) || !request_is_authenticated(api, request) ||
+        !form_content_type(request)) {
+        return send_error(request, "403 Forbidden", "preset_forbidden");
+    }
+
+    desk_app_status_t status;
+    if (!desk_app_get_runtime_status(&status) || !desk_is_stopped(&status) ||
+        status.outputs.state != DESK_STATE_IDLE ||
+        status.outputs.error != DESK_ERROR_NONE) {
+        return send_error(request, "409 Conflict", "desk_must_be_idle");
+    }
+
+    char body[DESK_HTTP_BODY_MAX_SIZE + 1U];
+    size_t body_length;
+    char encoded_slot[2];
+    size_t slot_length;
+    if (!read_body(request, body, &body_length) ||
+        desk_form_get_value(body, body_length, "slot", encoded_slot,
+                            sizeof(encoded_slot), &slot_length) != DESK_FORM_OK ||
+        slot_length != 1U || encoded_slot[0] < '1' || encoded_slot[0] > '3') {
+        return send_error(request, HTTPD_400, "invalid_preset_slot");
+    }
+    size_t slot = (size_t)(encoded_slot[0] - '1');
+    desk_preset_bank_t updated = status.presets;
+    if (!desk_preset_bank_capture(&updated, slot, &status.inputs,
+                                  status.outputs.position_reference_valid,
+                                  status.outputs.feedback_warning,
+                                  (int32_t)BOARD_ACTUATOR_TRAVEL_UM,
+                                  BOARD_HALL_STOP_UM)) {
+        return send_error(request, "409 Conflict", "preset_capture_unsafe");
+    }
+
+    desk_preset_bank_t previous = api->store->presets;
+    esp_err_t result = esp_network_store_save_presets(api->store, &updated);
+    if (result != ESP_OK ||
+        !desk_app_queue_preset_target(slot, updated.target_um[slot])) {
+        if (result == ESP_OK &&
+            esp_network_store_save_presets(api->store, &previous) != ESP_OK) {
+            ESP_LOGE(TAG, "preset rollback failed");
+        }
+        return send_error(request, "503 Service Unavailable", "preset_apply_failed");
+    }
+    return send_json(request, HTTPD_200, "{\"updated\":true}");
 }
 
 static esp_err_t login_handler(httpd_req_t *request)
@@ -650,6 +711,10 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
         {.uri = "/api/v1/mode",
          .method = HTTP_POST,
          .handler = mode_handler,
+         .user_ctx = api},
+        {.uri = "/api/v1/preset",
+         .method = HTTP_POST,
+         .handler = preset_handler,
          .user_ctx = api},
         {.uri = "/api/v1/control",
          .method = HTTP_GET,

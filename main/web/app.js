@@ -14,7 +14,7 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const loginDialog = $("#login-dialog");
-const movementButtons = $$(".controls button");
+const movementButtons = $$(".hold-control");
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -59,6 +59,16 @@ function updateControls(status) {
   $("#move-down").disabled = !canMove;
   $("#calibrate").disabled = !state.authenticated || !remoteAllowed ||
     status.emergency || status.state === "moving_up" || status.state === "moving_down";
+  $$(".preset-motion").forEach((button) => {
+    const preset = status.presets[Number(button.dataset.slot)];
+    button.disabled = !canMove || !preset?.valid;
+  });
+  const canCapture = state.authenticated && status.state === "idle" &&
+    status.error === "none" && status.referenced && !status.feedback_warning &&
+    !status.emergency && !status.remote_active;
+  $$(".preset-save").forEach((button) => {
+    button.disabled = !canCapture;
+  });
   $$(".segments button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === status.mode);
     button.disabled = status.remote_active;
@@ -77,6 +87,10 @@ function renderStatus(status) {
     status.axes.length / 1000;
   $("#desk-height").textContent = status.referenced ? average.toFixed(1) : "--";
   status.axes.forEach(updateAxis);
+  status.presets.forEach((preset, index) => {
+    $(`#preset-${index + 1}-height`).textContent =
+      preset.valid ? `${(preset.target_um / 1000).toFixed(1)} mm` : "--";
+  });
 
   const alert = $("#alert");
   const hasAlert = status.error !== "none" || status.emergency || status.feedback_warning;
@@ -244,6 +258,23 @@ $$(".segments button").forEach((button) => {
       });
       await pollStatus();
     } catch (_) {
+      await pollStatus();
+    }
+  });
+});
+
+$$(".preset-save").forEach((button) => {
+  button.addEventListener("click", async () => {
+    stopMotion();
+    try {
+      await request("/api/v1/preset", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({slot: String(Number(button.dataset.slot) + 1)}),
+      });
+    } catch (_) {
+      // The following status poll exposes the authoritative safety state.
+    } finally {
       await pollStatus();
     }
   });
