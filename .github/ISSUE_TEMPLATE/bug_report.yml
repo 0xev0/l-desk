@@ -1,0 +1,71 @@
+name: Firmware bug
+description: Report reproducible incorrect or unsafe firmware behavior
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Stop using the desk and remove motor power if behavior is unsafe. Never include credentials or private keys.
+  - type: input
+    id: version
+    attributes:
+      label: Firmware version or commit
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Host tests
+        - ESP32-S3 logic-only bench
+        - One actuator bench
+        - Three actuator frame
+        - Fully assembled desk
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Exact hardware
+      description: Board revision, actuators, Hall outputs, drivers, PSU, regulator, limits, and E-stop.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include initial state, inputs, timing, and what was connected.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or test output
+      render: text
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed motor power before changing wiring.
+          required: true
+        - label: I removed credentials, tokens, private keys, and private network data.
+          required: true
+        - label: This is not a private security vulnerability covered by SECURITY.md.
+          required: true

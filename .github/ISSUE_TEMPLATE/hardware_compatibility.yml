@@ -1,0 +1,44 @@
+name: Hardware compatibility
+description: Report a validated component or wiring compatibility result
+title: "hardware: "
+labels:
+  - hardware
+body:
+  - type: input
+    id: component
+    attributes:
+      label: Manufacturer and exact part number
+    validations:
+      required: true
+  - type: textarea
+    id: datasheet
+    attributes:
+      label: Datasheet and electrical characteristics
+      description: Include the official datasheet URL and relevant voltage/current/signal details.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Test setup
+      description: Firmware commit, wiring, load, instruments, and test duration.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Results
+      description: Include Hall scale, current, temperature, noise, timing, and observed limits where relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: evidence
+    attributes:
+      label: Evidence
+      options:
+        - label: Signals connected to ESP32 GPIO were proven 3.3 V compatible.
+          required: true
+        - label: Motor power was fused and not routed through breadboard/Dupont wiring.
+          required: true
+        - label: I have not represented this result as a safety certification.
+          required: true
