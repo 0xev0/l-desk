@@ -5,13 +5,13 @@ there is no provisional driver or custom PCB.
 
 | Qty | Component | Firmware interaction |
 | ---: | --- | --- |
-| 1 | ESP32-S3-DevKitC-1U-N8R8 | Runs the 10 ms controller; WiFi/BLE reserved |
-| 1 | 2.4 GHz external antenna | Future connectivity beside a metal frame |
+| 1 | ESP32-S3-DevKitC-1U-N8R8 | Runs the 10 ms controller and WiFi web service |
+| 1 | 2.4 GHz external antenna | WiFi coverage beside the metal frame |
 | 1 | DevKit terminal-block adapter | Reliable low-voltage termination |
 | 3 | Identical 12 V, 1000 N, 500 mm Hall actuators | One fixed axis and PCNT counter each |
 | 3 | Matching BTS7960/IBT-2 modules | RPWM, LPWM, and tied R_EN/L_EN per axis |
 | 6 | NC limit switches | Upper/lower fail-safe input per axis |
-| 3 | Momentary buttons | Active-low UP, DOWN, CALIBRATE |
+| 0 or 3 | Momentary buttons | Optional active-low UP, DOWN, CALIBRATE |
 | 1 | Dual-contact latching NC E-stop | Physical contactor drop plus GPIO monitor |
 | 1 | DC-rated contactor/relay | Physically removes motor power |
 | 1 | 12 V PSU | Sized from measured actuator current, not label guesswork |
@@ -45,6 +45,11 @@ or firmware to tolerate three indefinitely stalled actuators.
 
 The PC USB port may power only the DevKit during logic tests. It cannot power a
 12 V actuator, BTS7960 motor stage, contactor, or the final three-axis demo.
+
+In a buttonless installation, leave UP/DOWN/CALIBRATE unconnected and select
+`MOBILE_ONLY` after provisioning. Internal pull-ups keep those inputs released;
+long installed button harnesses should use suitable external pull-ups and
+noise validation. Limits, Hall sensors, and the physical E-stop remain fitted.
 
 ## Mechanical Requirements
 

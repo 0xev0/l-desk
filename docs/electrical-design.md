@@ -47,6 +47,10 @@ The firmware enables internal pull-ups. For long cables, fit suitable external
 pull-ups near the controller and validate EMC behavior. Limit/E-stop activation
 is immediate; only release is filtered for 50 ms.
 
+UP/DOWN/CALIBRATE also use active-low pull-ups and may be omitted in
+`MOBILE_ONLY`. An omitted control is an open input held HIGH by its pull-up; do
+not jumper it to ground. Optional buttons do not make limits or E-stop optional.
+
 Use separate E-stop contacts: one in the contactor safety circuit and one GPIO
 monitor contact. Firmware detection is supplementary and must not be required
 to remove motor power. Fit coil suppression appropriate to the DC contactor.
@@ -61,6 +65,7 @@ appropriate, and validate the 1 us digital glitch filter against real pulses.
 ## Startup and Failure
 
 GPIO enables have pulldowns. Firmware initializes enable LOW and PWM zero before
-any motor driver can be enabled. Any initialization, output, Hall, or watchdog
-failure leaves requested outputs stopped. A physical power interruption must
-also default the contactor open.
+any motor driver can be enabled. Startup validates every configured GPIO for
+target capability and duplicate assignment. Any initialization, output, Hall,
+or watchdog failure leaves requested outputs stopped. A physical power
+interruption must also default the contactor open.

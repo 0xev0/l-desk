@@ -26,6 +26,12 @@ The control task publishes one normalized status snapshot per tick under a
 short cross-core critical section. Diagnostics and network code read that
 snapshot rather than touching live controller state.
 
+`desk_preset_controller` converts a held semantic M1/M2/M3 request into only an
+UP, DOWN, or STOP request. It uses the common Hall reference, chooses one
+direction at gesture start, stops within the target tolerance, and cannot hunt
+or reverse while held. NVS serialization, WiFi, HTTP, and OTA stay outside the
+control task.
+
 ## Runtime
 
 Every nominal 10 ms iteration:
@@ -40,6 +46,11 @@ Every nominal 10 ms iteration:
 
 An interval above 50 ms, clock rollback, read/write failure, Hall failure, or
 watchdog service failure becomes a latched hardware/control error.
+
+Network event state shared with HTTP uses C11 atomics. Cross-core command and
+logging paths use fixed static queues. Persistent diagnostic access uses a
+static mutex. No project-owned heap allocation exists in the control path;
+ESP-IDF networking allocates from its own runtime services.
 
 The control task is statically allocated, pinned to core 1, and scheduled with
 `vTaskDelayUntil()` so processing time does not accumulate as timer drift.
@@ -104,11 +115,18 @@ During motion the domain checks:
 Raw counts remain available for direction and stall checks. Each axis also has
 an integer counts-per-travel scale that converts its count to micrometers before
 skew comparison. Position becomes referenced only after successful lower
-calibration. No preset or absolute automatic positioning is implemented.
+calibration. Presets remain hold-to-run and supervised by the same state
+machine; no unattended position command exists.
 
 ## Extension Points
 
-Future transports submit semantic requests above `desk_app`; they cannot
-receive motor/GPIO handles. Presets need a separate position-command service
-and NVS adapter. WiFi/BLE consume the existing bounded application queue, with
-local and physical safety retaining final authority.
+Future BLE or MQTT transports may submit semantic requests above `desk_app`;
+they cannot receive motor/GPIO handles. The current WiFi/WebSocket transport
+already consumes the bounded application queue, with local and physical safety
+retaining final authority. MQTT telemetry can read published snapshots, but a
+new transport must not own the controller or introduce a second motion path.
+
+OTA first inhibits motion through that same queue, waits for a confirmed STOP
+snapshot, streams to the inactive partition, verifies the signature in
+`esp_ota_end()`, and only then changes the boot partition. A pending image is
+confirmed only after stopped control and network startup self-tests.

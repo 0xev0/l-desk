@@ -17,10 +17,13 @@ The first hardware release includes:
 - UP, DOWN, and CALIBRATE controls
 - Monitored dual-contact E-stop with independent physical motor power cut
 - Manual hold-to-run, downward calibration, and Hall synchronization
+- Local, hybrid, and buttonless mobile-only WiFi control
+- Hold-to-run M1/M2/M3 presets
+- Bounded diagnostics and externally signed A/B OTA
 
-Do not add presets, automatic positioning, WiFi, BLE, OTA, display, web UI,
-Home Assistant, or persistent storage unless the task explicitly advances the
-documented roadmap.
+Do not add unattended automatic positioning, BLE, MQTT/Home Assistant, display,
+native mobile apps, hardware Secure Boot, or additional persistent state unless
+the task explicitly advances the documented roadmap.
 
 ## Mandatory Safety Rules
 

@@ -24,6 +24,7 @@ disconnected.
 - Open every limit and E-stop monitor wire in turn; inspect expected error/state.
 - Verify CALIBRATE and error-clear long-hold/release behavior.
 - Confirm watchdog reset behavior and brownout recovery return to `SAFE_START`.
+- Flash a signed baseline image and confirm an unsigned OTA image is rejected.
 
 ## 3. Outputs Without Motors
 
@@ -85,6 +86,15 @@ Test frame-only, then 25%, 50%, 75%, and expected working load.
 - Repeated reset, brownout, PSU interruption, and at least 100 power cycles.
 - At least 8 hours powered soak plus repeated movement within duty limits.
 - Record minimum free heap and prove it stabilizes.
+- Exercise local, hybrid, and mobile-only modes with buttons connected and
+  disconnected as intended for the final installation.
+- Test phone blur, screen lock, WiFi loss, AP restart, and WebSocket loss during
+  each hold action; motion must stop within the 250 ms lease.
+- Capture and move toward all three presets from above and below under load.
+- Install a valid signed OTA, verify inactive-slot boot and confirmation, then
+  install a deliberately failing test image and verify rollback.
+- Interrupt OTA upload and power at controlled stages; the previous app must
+  remain bootable and motor outputs inactive.
 - Re-torque allowed terminals and inspect for thermal discoloration.
 - Review logs and every commissioning result before creating a release tag.
 

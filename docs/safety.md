@@ -17,6 +17,10 @@
 - A control-loop interval above 50 ms becomes a latched error.
 - Error clear requires CALIBRATE held 2 seconds and then released with healthy
   inputs; it returns to `SAFE_START` and never resumes movement automatically.
+- Presets are hold-to-run, use one direction per gesture, and latch STOP when
+  the target is crossed or enters tolerance.
+- OTA first inhibits all command sources and requires a confirmed STOP vector.
+  A failed update cannot release maintenance while a control remains held.
 
 ## Input Filtering
 
@@ -31,8 +35,8 @@ physical cause.
 ## Hall Synchronization Limits
 
 Incremental Hall counts require a successful lower calibration after every
-boot. `UNREFERENCED` inhibits ordinary movement. The current release does not
-move to automatic positions. PWM
+boot. `UNREFERENCED` inhibits ordinary movement. Presets still require a
+continuous local/mobile hold and are not unattended automatic positioning. PWM
 trim reduces the leading axis; it is not a PID and cannot compensate for a bent
 frame, overloaded column, slipping mechanics, or sensor pulses that look valid
 but are physically wrong.
@@ -51,6 +55,7 @@ Firmware cannot guarantee safety if:
 - the frame racks, binds, tips, or uses actuators as lateral guides;
 - mechanical hard stops are absent;
 - Hall wiring creates plausible but false counts;
+- an authenticated client is compromised on the unencrypted trusted LAN;
 - the selected drivers, PSU, connectors, or enclosure overheat.
 
 Use a DC-rated physical contactor, branch fuses, proper earth/grounding,

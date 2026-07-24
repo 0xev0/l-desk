@@ -2,8 +2,9 @@
 
 ## Host Suite
 
-Nineteen CTest executables cover domain, application, input filtering, fake HAL,
-BTS7960 sequencing, and output invariants without ESP-IDF hardware.
+Twenty-five CTest gates cover domain, application, input filtering, fake HAL,
+BTS7960 sequencing, network codecs/security, the mobile HTTP contract, web
+JavaScript syntax, and output invariants without ESP-IDF hardware.
 
 ```sh
 cmake -S tests -B build-host -DDESK_ENABLE_SANITIZERS=ON
@@ -31,8 +32,8 @@ LLVM_PROFILE_FILE=/tmp/motorized-desk-coverage/%p.profraw \
 
 Merge with `llvm-profdata` and report with `llvm-cov` over
 all host-testable domain, application, and output-sequencing modules. The
-current result is 96.38% lines, 96.23% regions, 82.98% branches, and 100%
-functions. Keep line coverage at or above 95% and all safety transitions
+current result is at least 96.7% lines, 84.6% branches, and 100% functions.
+Keep line coverage at or above 95% and all safety transitions
 explicitly tested.
 
 ## Covered Behavior
@@ -59,6 +60,12 @@ explicitly tested.
 - Percent-decoded provisioning forms, duplicate-key rejection, exact cookies,
   same-origin enforcement, and short/overlong authentication secrets
 - Explicit long-hold/release error clear without automatic motion
+- Preset capture/storage corruption, hold-to-run target crossing, no hunting,
+  invalid feedback, and buttonless mobile preset operation
+- Maintenance inhibit, held-control release interlock, diagnostic CRC/ring
+  recovery, and stopped OTA boot-health predicate
+- HTTP asset/login/status/mode/preset/provision/diagnostic/update contract and
+  JavaScript syntax
 - Deterministic repeated ticks and saturating timing arithmetic
 
 ## ESP-IDF Build
@@ -81,3 +88,8 @@ record the exposed current/minimum free heap, task stack high-water marks, and
 dropped-log counters during the 8 hour soak. Confirm that the statically
 allocated control task maintains its 10 ms cadence while diagnostics are being
 emitted.
+
+The Python HTTP test runs a deterministic contract double of the ESP-IDF
+service. It catches mobile/API drift but does not exercise lwIP, the ESP-IDF
+HTTP server, WiFi radio, flash writes, signature hardware path, or real
+WebSocket timing. Those remain target-integration commissioning gates.

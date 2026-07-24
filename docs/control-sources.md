@@ -65,6 +65,7 @@ JSON, or ESP-IDF. The current HTTP/WebSocket transport may only enqueue:
 
 - acquire remote lease;
 - high-level UP, DOWN, CALIBRATE, or STOP;
+- high-level hold-to-run M1, M2, or M3;
 - select an allowed control mode.
 
 Network parsing, authentication, provisioning, rate limits, and client
@@ -82,9 +83,9 @@ minute. Sessions disappear on reboot and can be logged out explicitly.
 
 WiFi SSID and PSK are validated with fixed maximum lengths and persisted as one
 versioned NVS blob, so a power loss cannot commit half of a credential pair.
-The selected control mode is stored separately. NVS encryption is not yet
-enabled; physical flash access can recover credentials until the P4 security
-gate is completed.
+The selected control mode and three presets are stored separately. Presets use
+a versioned fixed-size record with CRC and bounds checks. NVS encryption is not
+enabled; physical flash access can recover credentials and tokens.
 
 ## WebSocket Command Frame
 
@@ -94,7 +95,7 @@ Movement uses a fixed 12-byte binary frame. Multi-byte values are big-endian.
 |---:|---:|---|
 | 0 | 1 | Protocol version, currently `1` |
 | 1 | 1 | Message type, `1` for command |
-| 2 | 1 | `0 STOP`, `1 UP`, `2 DOWN`, `3 CALIBRATE` |
+| 2 | 1 | `0 STOP`, `1 UP`, `2 DOWN`, `3 CALIBRATE`, `4..6 M1..M3` |
 | 3 | 1 | Reserved, must be zero |
 | 4 | 4 | Nonzero monotonically increasing sequence |
 | 8 | 2 | Validity in milliseconds, `1..250` |

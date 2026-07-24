@@ -30,6 +30,8 @@ revision checks are complete.
   DOWN. Reverse a channel pair or change only its centralized sign after bench
   verification.
 - No 5 V signal may reach an ESP32 GPIO.
+- Startup rejects duplicate pins and motor assignments that are not valid output
+  GPIOs before LEDC or any driver is initialized.
 
 ## Tuning Values
 
@@ -37,3 +39,6 @@ revision checks are complete.
 warning/stop distances in micrometers, stall timeout, start/max PWM, and
 synchronization trim. Replace the provisional scales with measurements from
 each selected actuator before loaded commissioning.
+
+Compile-time assertions reject zero Hall scale, invalid warning/stop ordering,
+incoherent PWM limits, and zero-capacity runtime queues.

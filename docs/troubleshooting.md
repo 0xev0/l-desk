@@ -17,6 +17,10 @@ software command, when motion is unexpected.
 | Driver heats rapidly | Clone module underrated, poor terminal/heatsink, overload | Stop; measure current and temperature, inspect module revision |
 | ESP32 resets on start | PSU/regulator sag, ground layout, motor noise | Scope 12 V/5 V/3.3 V, separate wiring, inspect suppression |
 | Native USB unavailable | GPIO19/20 assigned to Hall | Use DevKit USB-to-UART port |
+| App aborts before `app_main` | Initial image was not signed | Rebuild with `tools/build_signed.sh` and serial-flash safely |
+| OTA reports `update_rejected` | Wrong key, unsigned/truncated image, inactive slot issue | Verify signature locally; inspect OTA log with motors unpowered |
+| Phone loses control | WiFi/session/WebSocket expired | Motion should stop in 250 ms; reconnect and start a new hold gesture |
+| Recovery SoftAP appears | Ten STA connection failures | Check router/credentials; authenticate locally and reprovision |
 
 ## Error Clear
 
