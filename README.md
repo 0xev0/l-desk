@@ -60,7 +60,9 @@ boundary if added.
 - Enclosure, terminal blocks, ferrules, strain relief, and locking connectors
 
 See [hardware](docs/hardware.md), [electrical design](docs/electrical-design.md),
-and [pinout](docs/pinout.md) before connecting anything.
+and [pinout](docs/pinout.md) before connecting anything. The accepted network
+and physical-access risks are recorded in the
+[security audit](docs/security-audit.md).
 
 ## Signed Firmware Build
 
