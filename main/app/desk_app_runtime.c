@@ -33,10 +33,25 @@ typedef struct {
     StaticQueue_t request_queue_storage;
     uint8_t request_queue_buffer[BOARD_CONTROL_REQUEST_QUEUE_DEPTH *
                                  sizeof(desk_runtime_request_t)];
+    desk_app_status_t status;
+    bool status_valid;
     atomic_bool ready;
 } desk_app_runtime_t;
 
 static desk_app_runtime_t runtime;
+static portMUX_TYPE runtime_status_lock = portMUX_INITIALIZER_UNLOCKED;
+
+static void publish_status(desk_app_runtime_t *desk_runtime)
+{
+    desk_app_status_t status;
+    if (!desk_app_get_status(&desk_runtime->app, &status)) {
+        return;
+    }
+    taskENTER_CRITICAL(&runtime_status_lock);
+    desk_runtime->status = status;
+    desk_runtime->status_valid = true;
+    taskEXIT_CRITICAL(&runtime_status_lock);
+}
 
 static void process_control_requests(desk_app_runtime_t *desk_runtime)
 {
@@ -78,6 +93,7 @@ static void control_task(void *argument)
     while (true) {
         process_control_requests(desk_runtime);
         (void)desk_app_step(&desk_runtime->app);
+        publish_status(desk_runtime);
         vTaskDelayUntil(&last_wake_tick, period_ticks);
     }
 }
@@ -132,6 +148,23 @@ bool desk_app_get_runtime_diagnostics(desk_runtime_diagnostics_t *diagnostics)
         .logger_stack_high_water_words = platform_diagnostics.logger_stack_high_water_words,
     };
     return true;
+}
+
+bool desk_app_get_runtime_status(desk_app_status_t *status)
+{
+    if (status == NULL ||
+        !atomic_load_explicit(&runtime.ready, memory_order_acquire)) {
+        return false;
+    }
+
+    bool valid;
+    taskENTER_CRITICAL(&runtime_status_lock);
+    valid = runtime.status_valid;
+    if (valid) {
+        *status = runtime.status;
+    }
+    taskEXIT_CRITICAL(&runtime_status_lock);
+    return valid;
 }
 
 static bool queue_runtime_request(const desk_runtime_request_t *request)

@@ -18,10 +18,19 @@ typedef struct {
 } desk_runtime_diagnostics_t;
 
 typedef struct {
+    desk_inputs_t inputs;
+    desk_outputs_t outputs;
+    desk_control_mode_t control_mode;
+    desk_control_source_t control_source;
+    bool remote_control_active;
+} desk_app_status_t;
+
+typedef struct {
     desk_controller_t controller;
     desk_command_arbiter_t command_arbiter;
     desk_input_filter_t input_filter;
     desk_platform_t platform;
+    desk_inputs_t last_inputs;
     desk_outputs_t last_outputs;
     uint64_t last_step_ms;
     uint64_t clear_error_pressed_since_ms;
@@ -37,8 +46,10 @@ desk_outputs_t desk_app_step(desk_app_t *app);
 bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode);
 bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id);
 bool desk_app_submit_remote_command(desk_app_t *app, const desk_remote_command_t *command);
+bool desk_app_get_status(const desk_app_t *app, desk_app_status_t *status);
 bool desk_app_start(void);
 bool desk_app_get_runtime_diagnostics(desk_runtime_diagnostics_t *diagnostics);
+bool desk_app_get_runtime_status(desk_app_status_t *status);
 bool desk_app_queue_remote_lease(uint64_t lease_id);
 bool desk_app_queue_remote_command(const desk_remote_command_t *command);
 bool desk_app_queue_control_mode(desk_control_mode_t mode);

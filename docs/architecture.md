@@ -22,6 +22,9 @@ state is held in static arrays, making each control tick O(3) with bounded work.
 selects local, hybrid, or mobile-only semantic controls and enforces exclusive
 remote leases, sequence ordering, and 250 ms expiry. Cross-core producers use
 a bounded static queue; only the control task mutates the arbiter or controller.
+The control task publishes one normalized status snapshot per tick under a
+short cross-core critical section. Diagnostics and network code read that
+snapshot rather than touching live controller state.
 
 ## Runtime
 

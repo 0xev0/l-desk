@@ -63,6 +63,13 @@ static void app_runs_through_injected_platform(void)
         TEST_ASSERT_TRUE(fake.outputs.motor[axis].enable);
     }
     TEST_ASSERT_TRUE(fake.log_calls > 0U);
+
+    desk_app_status_t status;
+    TEST_ASSERT_TRUE(desk_app_get_status(&app, &status));
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, status.outputs.state);
+    TEST_ASSERT_EQUAL_INT(DESK_CONTROL_MODE_HYBRID, status.control_mode);
+    TEST_ASSERT_EQUAL_INT(DESK_CONTROL_SOURCE_LOCAL, status.control_source);
+    TEST_ASSERT_TRUE(status.inputs.up_pressed);
 }
 
 static void read_and_write_failures_fail_stopped(void)
@@ -198,6 +205,9 @@ static void incomplete_platform_is_rejected(void)
     TEST_ASSERT_FALSE(desk_app_set_control_mode(&app, DESK_CONTROL_MODE_HYBRID));
     TEST_ASSERT_FALSE(desk_app_acquire_remote_lease(&app, 1U));
     TEST_ASSERT_FALSE(desk_app_submit_remote_command(&app, NULL));
+    TEST_ASSERT_FALSE(desk_app_get_status(NULL, NULL));
+    TEST_ASSERT_FALSE(desk_app_get_status(&app, NULL));
+    TEST_ASSERT_FALSE(desk_app_get_status(&app, &(desk_app_status_t){0}));
 }
 
 static void mobile_only_ignores_buttons_and_requires_a_live_remote_lease(void)

@@ -114,6 +114,7 @@ desk_outputs_t desk_app_step(desk_app_t *app)
     inputs.calibrate_pressed = controls.calibrate_pressed;
     app->last_control_source = controls.source;
     app->remote_control_active = controls.remote_active;
+    app->last_inputs = inputs;
     update_clear_error_request(app, &inputs, now_ms);
     desk_outputs_t outputs = desk_controller_tick(&app->controller, &inputs, now_ms);
 
@@ -165,4 +166,19 @@ bool desk_app_submit_remote_command(desk_app_t *app, const desk_remote_command_t
     }
     return desk_command_arbiter_submit_remote(&app->command_arbiter, command,
                                               app->platform.now_ms(app->platform.context));
+}
+
+bool desk_app_get_status(const desk_app_t *app, desk_app_status_t *status)
+{
+    if (app == NULL || status == NULL || !app->initialized) {
+        return false;
+    }
+    *status = (desk_app_status_t){
+        .inputs = app->last_inputs,
+        .outputs = app->last_outputs,
+        .control_mode = app->command_arbiter.mode,
+        .control_source = app->last_control_source,
+        .remote_control_active = app->remote_control_active,
+    };
+    return true;
 }
