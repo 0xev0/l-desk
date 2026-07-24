@@ -23,6 +23,28 @@ static bool apply_persisted_control_mode(desk_control_mode_t mode)
     return false;
 }
 
+static bool apply_persisted_presets(const desk_preset_bank_t *presets)
+{
+    for (size_t slot = 0U; slot < DESK_PRESET_COUNT; ++slot) {
+        if (!presets->valid[slot]) {
+            continue;
+        }
+        bool accepted = false;
+        for (unsigned attempt = 0U; attempt < DESK_NETWORK_CONTROL_READY_ATTEMPTS;
+             ++attempt) {
+            if (desk_app_queue_preset_target(slot, presets->target_um[slot])) {
+                accepted = true;
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(DESK_NETWORK_CONTROL_READY_DELAY_MS));
+        }
+        if (!accepted) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static void log_provisioning_credentials(const esp_network_service_t *service)
 {
     char admin_secret[DESK_AUTH_SECRET_TEXT_SIZE];
@@ -50,6 +72,13 @@ bool esp_network_service_start(void)
     if (!apply_persisted_control_mode(network_service.store.control_mode)) {
         ESP_LOGE(TAG, "control task did not accept persisted mode");
         return false;
+    }
+    if (!apply_persisted_presets(&network_service.store.presets)) {
+        ESP_LOGE(TAG, "control task did not accept persisted presets");
+        return false;
+    }
+    if (network_service.store.preset_storage_fault) {
+        ESP_LOGE(TAG, "corrupt preset storage ignored; all presets disabled");
     }
 
     result = esp_wifi_service_init(&network_service.wifi, &network_service.store);

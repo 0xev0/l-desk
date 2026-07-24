@@ -15,6 +15,7 @@ idf_component_register(
         "network/desk_form_codec.c"
         "network/desk_http_security.c"
         "network/desk_network_config.c"
+        "network/desk_preset_record.c"
         "network/esp_network_store.c"
         "network/esp_http_api.c"
         "network/esp_network_service.c"

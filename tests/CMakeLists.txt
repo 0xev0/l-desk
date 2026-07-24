@@ -80,6 +80,19 @@ target_include_directories(test_preset_controller PRIVATE
 
 add_test(NAME test_preset_controller COMMAND test_preset_controller)
 
+add_executable(test_preset_record
+    test_preset_record.c
+    ../main/network/desk_preset_record.c
+    ../main/app/desk_preset_controller.c
+)
+target_include_directories(test_preset_record PRIVATE
+    ../main/network
+    ../main/app
+    ../main/domain
+)
+
+add_test(NAME test_preset_record COMMAND test_preset_record)
+
 add_executable(test_control_protocol
     test_control_protocol.c
     ../main/network/desk_control_protocol.c
