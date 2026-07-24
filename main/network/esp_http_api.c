@@ -345,8 +345,8 @@ static esp_err_t status_handler(httpd_req_t *request)
         status.outputs.position_reference_valid ? "true" : "false",
         status.outputs.feedback_warning ? "true" : "false",
         status.inputs.emergency_active ? "true" : "false",
-        api->wifi->provisioning_active ? "true" : "false",
-        api->wifi->station_connected ? "true" : "false",
+        esp_wifi_service_provisioning_active(api->wifi) ? "true" : "false",
+        esp_wifi_service_station_connected(api->wifi) ? "true" : "false",
         status.preset_target_reached ? "true" : "false",
         api->store->preset_storage_fault ? "true" : "false",
         status.motion_inhibited ? "true" : "false",
@@ -622,7 +622,8 @@ static esp_err_t provisioning_handler(httpd_req_t *request)
 {
     esp_http_api_t *api = request->user_ctx;
     if (!same_origin(request) || !request_is_authenticated(api, request) ||
-        !api->wifi->provisioning_active || !form_content_type(request)) {
+        !esp_wifi_service_provisioning_active(api->wifi) ||
+        !form_content_type(request)) {
         return send_error(request, "403 Forbidden", "provisioning_forbidden");
     }
 

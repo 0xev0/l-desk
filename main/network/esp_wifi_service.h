@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <stdint.h>
 
 #include "esp_event.h"
@@ -17,11 +18,14 @@ typedef struct {
     esp_event_handler_instance_t wifi_event_handler;
     esp_event_handler_instance_t ip_event_handler;
     char provisioning_ssid[DESK_WIFI_PROVISIONING_SSID_SIZE];
-    uint8_t connect_retries;
-    bool station_connected;
-    bool provisioning_active;
+    atomic_uchar connect_retries;
+    atomic_bool station_connected;
+    atomic_bool provisioning_active;
+    atomic_bool credentials_available;
     bool initialized;
 } esp_wifi_service_t;
 
 esp_err_t esp_wifi_service_init(esp_wifi_service_t *service, esp_network_store_t *store);
 esp_err_t esp_wifi_service_apply_credentials(esp_wifi_service_t *service);
+bool esp_wifi_service_station_connected(const esp_wifi_service_t *service);
+bool esp_wifi_service_provisioning_active(const esp_wifi_service_t *service);

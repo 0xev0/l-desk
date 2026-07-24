@@ -94,7 +94,7 @@ bool esp_network_service_start(void)
     }
 
     network_service.initialized = true;
-    if (network_service.wifi.provisioning_active) {
+    if (esp_wifi_service_provisioning_active(&network_service.wifi)) {
         log_provisioning_credentials(&network_service);
     }
     return true;
