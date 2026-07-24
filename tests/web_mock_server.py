@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import ssl
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -169,6 +170,9 @@ class DeskMockHandler(BaseHTTPRequestHandler):
         if self.path == "/api/v1/mode":
             self.send_json(HTTPStatus.OK, {"updated": True})
             return
+        if self.path == "/api/v1/error/clear":
+            self.send_json(HTTPStatus.OK, {"accepted": True})
+            return
         if self.path == "/api/v1/provision":
             if "ssid" not in form or "password" not in form:
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_credentials"})
@@ -195,8 +199,17 @@ class DeskMockHandler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--tls-certificate")
+    parser.add_argument("--tls-private-key")
     args = parser.parse_args()
-    ThreadingHTTPServer(("127.0.0.1", args.port), DeskMockHandler).serve_forever()
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), DeskMockHandler)
+    if bool(args.tls_certificate) != bool(args.tls_private_key):
+        parser.error("TLS certificate and private key must be provided together")
+    if args.tls_certificate:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(args.tls_certificate, args.tls_private_key)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+    server.serve_forever()
 
 
 if __name__ == "__main__":

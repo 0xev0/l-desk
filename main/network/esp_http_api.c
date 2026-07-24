@@ -573,9 +573,9 @@ static esp_err_t login_handler(httpd_req_t *request)
     }
 
     char cookie[128];
-    int written = snprintf(
-        cookie, sizeof(cookie), "%s=%s; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800",
-        SESSION_COOKIE, session);
+    int written = snprintf(cookie, sizeof(cookie),
+                           "%s=%s; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800",
+                           SESSION_COOKIE, session);
     if (written <= 0 || (size_t)written >= sizeof(cookie) ||
         set_security_headers(request) != ESP_OK ||
         httpd_resp_set_hdr(request, "Set-Cookie", cookie) != ESP_OK) {
@@ -595,8 +595,7 @@ static esp_err_t logout_handler(httpd_req_t *request)
     }
     if (httpd_resp_set_hdr(request, "Set-Cookie",
                            "desk_session=expired; Path=/; Secure; HttpOnly; SameSite=Strict; "
-                           "Max-Age=0") !=
-        ESP_OK) {
+                           "Max-Age=0") != ESP_OK) {
         return ESP_FAIL;
     }
     return send_json(request, HTTPD_200, "{\"authenticated\":false}");
@@ -692,6 +691,27 @@ static esp_err_t mode_handler(httpd_req_t *request)
         return send_error(request, "503 Service Unavailable", "mode_apply_failed");
     }
     return send_json(request, HTTPD_200, "{\"updated\":true}");
+}
+
+static esp_err_t clear_error_handler(httpd_req_t *request)
+{
+    esp_http_api_t *api = request->user_ctx;
+    if (!same_origin(request) || !request_is_authenticated(api, request)) {
+        return send_error(request, "403 Forbidden", "clear_error_forbidden");
+    }
+
+    desk_app_status_t status;
+    if (!desk_app_get_runtime_status(&status)) {
+        return send_error(request, "503 Service Unavailable", "control_unavailable");
+    }
+    if (status.outputs.state != DESK_STATE_ERROR || status.inputs.emergency_active ||
+        !desk_is_stopped(&status)) {
+        return send_error(request, "409 Conflict", "error_not_clearable");
+    }
+    if (!desk_app_queue_clear_error()) {
+        return send_error(request, "503 Service Unavailable", "clear_error_queue_full");
+    }
+    return send_json(request, HTTPD_200, "{\"accepted\":true}");
 }
 
 static bool generate_lease_id(uint64_t *lease_id)
@@ -805,7 +825,7 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
 
     httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
     config.httpd.stack_size = 12288U;
-    config.httpd.max_uri_handlers = 12U;
+    config.httpd.max_uri_handlers = 14U;
     config.httpd.max_open_sockets = 4U;
     config.httpd.max_resp_headers = 12U;
     config.httpd.lru_purge_enable = true;
@@ -844,6 +864,10 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
          .handler = provisioning_handler,
          .user_ctx = api},
         {.uri = "/api/v1/mode", .method = HTTP_POST, .handler = mode_handler, .user_ctx = api},
+        {.uri = "/api/v1/error/clear",
+         .method = HTTP_POST,
+         .handler = clear_error_handler,
+         .user_ctx = api},
         {.uri = "/api/v1/preset", .method = HTTP_POST, .handler = preset_handler, .user_ctx = api},
         {.uri = "/api/v1/update", .method = HTTP_POST, .handler = ota_handler, .user_ctx = api},
         {.uri = "/api/v1/control",

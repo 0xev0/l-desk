@@ -15,6 +15,7 @@ typedef enum {
     DESK_RUNTIME_REQUEST_CONTROL_MODE,
     DESK_RUNTIME_REQUEST_PRESET_TARGET,
     DESK_RUNTIME_REQUEST_MOTION_INHIBIT,
+    DESK_RUNTIME_REQUEST_CLEAR_ERROR,
 } desk_runtime_request_kind_t;
 
 typedef struct {
@@ -86,6 +87,9 @@ static void process_control_requests(desk_app_runtime_t *desk_runtime)
             break;
         case DESK_RUNTIME_REQUEST_MOTION_INHIBIT:
             (void)desk_app_set_motion_inhibited(&desk_runtime->app, request.motion_inhibited);
+            break;
+        case DESK_RUNTIME_REQUEST_CLEAR_ERROR:
+            (void)desk_app_request_clear_error(&desk_runtime->app);
             break;
         }
     }
@@ -246,5 +250,12 @@ bool desk_app_queue_motion_inhibit(bool inhibited)
     return queue_runtime_request(&(desk_runtime_request_t){
         .kind = DESK_RUNTIME_REQUEST_MOTION_INHIBIT,
         .motion_inhibited = inhibited,
+    });
+}
+
+bool desk_app_queue_clear_error(void)
+{
+    return queue_runtime_request(&(desk_runtime_request_t){
+        .kind = DESK_RUNTIME_REQUEST_CLEAR_ERROR,
     });
 }

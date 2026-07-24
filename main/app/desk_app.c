@@ -219,6 +219,13 @@ bool desk_app_set_motion_inhibited(desk_app_t *app, bool inhibited)
     return true;
 }
 
+bool desk_app_request_clear_error(desk_app_t *app)
+{
+    return app != NULL && app->initialized &&
+           desk_controller_request_clear_error(&app->controller, &app->last_inputs,
+                                               app->last_step_ms);
+}
+
 bool desk_app_set_preset_target(desk_app_t *app, size_t slot, int32_t target_um,
                                 int32_t maximum_travel_um)
 {

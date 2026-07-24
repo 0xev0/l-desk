@@ -125,6 +125,14 @@ class WebContractTest(unittest.TestCase):
             self.assertTrue(json.loads(payload))
 
         status, _, payload = self.request(
+            "POST",
+            "/api/v1/error/clear",
+            headers={"Cookie": cookie, "Origin": self.origin},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(payload)["accepted"])
+
+        status, _, payload = self.request(
             "DELETE",
             "/api/v1/session",
             headers={"Cookie": cookie, "Origin": self.origin},

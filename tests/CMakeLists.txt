@@ -55,6 +55,10 @@ if(DESK_NODE_EXECUTABLE)
                 ${CMAKE_CURRENT_SOURCE_DIR}/../main/web/app.js
     )
 endif()
+add_test(
+    NAME test_web_ui_source
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_web_ui_source.py
+)
 
 add_executable(test_position_scale
     test_position_scale.c

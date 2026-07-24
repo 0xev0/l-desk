@@ -54,6 +54,7 @@ bool desk_app_init(desk_app_t *app, const desk_platform_t *platform, const desk_
 desk_outputs_t desk_app_step(desk_app_t *app);
 bool desk_app_set_control_mode(desk_app_t *app, desk_control_mode_t mode);
 bool desk_app_set_motion_inhibited(desk_app_t *app, bool inhibited);
+bool desk_app_request_clear_error(desk_app_t *app);
 bool desk_app_set_preset_target(desk_app_t *app, size_t slot, int32_t target_um,
                                 int32_t maximum_travel_um);
 bool desk_app_acquire_remote_lease(desk_app_t *app, uint64_t lease_id);
@@ -70,3 +71,4 @@ bool desk_app_queue_remote_command(const desk_remote_command_t *command);
 bool desk_app_queue_control_mode(desk_control_mode_t mode);
 bool desk_app_queue_preset_target(size_t slot, int32_t target_um);
 bool desk_app_queue_motion_inhibit(bool inhibited);
+bool desk_app_queue_clear_error(void);

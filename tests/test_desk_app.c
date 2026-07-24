@@ -137,6 +137,32 @@ static void error_clear_requires_long_hold_and_release(void)
     assert_outputs_stopped(fake.outputs);
 }
 
+static void explicit_error_clear_reuses_domain_safety_checks(void)
+{
+    fake_platform_t fake;
+    fake_platform_reset(&fake);
+    desk_platform_t platform = fake_platform_interface(&fake);
+    desk_config_t config = app_test_config();
+    desk_app_t app;
+    TEST_ASSERT_TRUE(desk_app_init(&app, &platform, &config));
+    run_steps(&app, &fake, 52U);
+
+    fake.inputs.up_pressed = true;
+    fake.inputs.down_pressed = true;
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, fake.outputs.state);
+    TEST_ASSERT_FALSE(desk_app_request_clear_error(&app));
+
+    fake.inputs.up_pressed = false;
+    fake.inputs.down_pressed = false;
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_TRUE(desk_app_request_clear_error(&app));
+    run_steps(&app, &fake, 1U);
+    TEST_ASSERT_EQUAL_INT(DESK_STATE_SAFE_START, fake.outputs.state);
+    assert_outputs_stopped(fake.outputs);
+    TEST_ASSERT_FALSE(desk_app_request_clear_error(NULL));
+}
+
 static void calibration_zero_failure_enters_hardware_error(void)
 {
     fake_platform_t fake;
@@ -485,6 +511,7 @@ int main(void)
     app_runs_through_injected_platform();
     read_and_write_failures_fail_stopped();
     error_clear_requires_long_hold_and_release();
+    explicit_error_clear_reuses_domain_safety_checks();
     calibration_zero_failure_enters_hardware_error();
     calibration_at_lower_limits_zeroes_hall_once();
     incomplete_platform_is_rejected();

@@ -1,155 +1,287 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#17191c">
+  <meta name="theme-color" content="#171a1d">
   <title>L-Desk Control</title>
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <p class="eyebrow">THREE AXIS CONTROL</p>
-      <h1>L-Desk</h1>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">L</span>
+      <div>
+        <p class="eyebrow">Three-axis controller</p>
+        <h1>L-Desk</h1>
+      </div>
     </div>
-    <div class="connection">
-      <span id="connection-dot" class="dot offline"></span>
-      <span id="connection-label">Offline</span>
-    </div>
+    <button id="session-command" class="quiet-command" type="button">Sign in</button>
   </header>
 
+  <div class="connection-bar" aria-live="polite">
+    <span class="connection-item">
+      <i class="status-dot secure"></i>
+      <span>HTTPS</span>
+    </span>
+    <span class="connection-item">
+      <i id="api-dot" class="status-dot pending"></i>
+      <span id="api-status">Checking API</span>
+    </span>
+    <span class="connection-item">
+      <i id="socket-dot" class="status-dot idle"></i>
+      <span id="socket-status">Control idle</span>
+    </span>
+    <span id="last-update" class="last-update">No status received</span>
+  </div>
+
   <main>
-    <section class="status-band" aria-live="polite">
+    <section class="status-band" aria-label="Desk status">
       <div>
-        <span class="label">Estado</span>
-        <strong id="desk-state">--</strong>
+        <span class="label">State</span>
+        <strong id="desk-state">Unavailable</strong>
+      </div>
+      <div class="height-status">
+        <span class="label">Height</span>
+        <strong><span id="desk-height">--</span><small> mm</small></strong>
       </div>
       <div>
-        <span class="label">Altura</span>
-        <strong><span id="desk-height">--</span> mm</strong>
+        <span class="label">Command source</span>
+        <strong id="control-source">None</strong>
       </div>
       <div>
-        <span class="label">Control</span>
-        <strong id="control-source">--</strong>
+        <span class="label">Control mode</span>
+        <strong id="mode-label">--</strong>
       </div>
     </section>
 
     <section id="alert" class="alert hidden" role="alert">
-      <strong id="alert-title">Detenido</strong>
-      <span id="alert-detail"></span>
-    </section>
-
-    <section class="axes" aria-label="Columnas">
-      <article class="axis">
-        <header><span>A</span><strong id="axis-a-position">-- mm</strong></header>
-        <div class="travel"><span id="axis-a-level"></span></div>
-        <footer><span id="axis-a-lower">MIN</span><span id="axis-a-upper">MAX</span></footer>
-      </article>
-      <article class="axis">
-        <header><span>B</span><strong id="axis-b-position">-- mm</strong></header>
-        <div class="travel"><span id="axis-b-level"></span></div>
-        <footer><span id="axis-b-lower">MIN</span><span id="axis-b-upper">MAX</span></footer>
-      </article>
-      <article class="axis">
-        <header><span>C</span><strong id="axis-c-position">-- mm</strong></header>
-        <div class="travel"><span id="axis-c-level"></span></div>
-        <footer><span id="axis-c-lower">MIN</span><span id="axis-c-upper">MAX</span></footer>
-      </article>
-    </section>
-
-    <section class="controls" aria-label="Movimiento">
-      <button id="move-up" class="motion hold-control" type="button" data-action="1"
-              aria-label="Subir">
-        <span aria-hidden="true">&#8593;</span>
-        <small>SUBIR</small>
-      </button>
-      <button id="calibrate" class="calibrate hold-control" type="button" data-action="3">
-        <span>CAL</span>
-        <small>CALIBRAR</small>
-      </button>
-      <button id="move-down" class="motion hold-control" type="button" data-action="2"
-              aria-label="Bajar">
-        <span aria-hidden="true">&#8595;</span>
-        <small>BAJAR</small>
-      </button>
-    </section>
-
-    <section class="presets" aria-label="Alturas memorizadas">
-      <article>
-        <button class="preset-motion hold-control" type="button" data-slot="0"
-                data-action="4" aria-label="Mover a memoria 1">M1</button>
-        <strong id="preset-1-height">--</strong>
-        <button class="preset-save" type="button" data-slot="0">Guardar</button>
-      </article>
-      <article>
-        <button class="preset-motion hold-control" type="button" data-slot="1"
-                data-action="5" aria-label="Mover a memoria 2">M2</button>
-        <strong id="preset-2-height">--</strong>
-        <button class="preset-save" type="button" data-slot="1">Guardar</button>
-      </article>
-      <article>
-        <button class="preset-motion hold-control" type="button" data-slot="2"
-                data-action="6" aria-label="Mover a memoria 3">M3</button>
-        <strong id="preset-3-height">--</strong>
-        <button class="preset-save" type="button" data-slot="2">Guardar</button>
-      </article>
-    </section>
-
-    <section class="settings">
-      <header>
-        <div>
-          <span class="label">Modo de control</span>
-          <strong id="mode-label">--</strong>
-          <small id="firmware-version">--</small>
-        </div>
-        <button id="logout" class="icon-command" type="button">Salir</button>
-      </header>
-      <div class="segments" role="group" aria-label="Modo de control">
-        <button type="button" data-mode="local">Local</button>
-        <button type="button" data-mode="hybrid">Hibrido</button>
-        <button type="button" data-mode="mobile">Movil</button>
-      </div>
-    </section>
-
-    <section class="firmware-update">
-      <header>
-        <span class="label">Firmware</span>
-        <strong>Actualizacion firmada</strong>
-      </header>
+      <div class="alert-symbol" aria-hidden="true">!</div>
       <div>
-        <input id="firmware-file" type="file" accept=".bin,application/octet-stream">
-        <button id="update-firmware" type="button" disabled>Actualizar</button>
+        <strong id="alert-title">Motion stopped</strong>
+        <p id="alert-detail"></p>
+      </div>
+      <button id="clear-error" class="alert-command" type="button">Clear error</button>
+    </section>
+
+    <div class="control-layout">
+      <section class="axis-panel" aria-labelledby="axes-title">
+        <header class="section-heading">
+          <div>
+            <span class="label">Position feedback</span>
+            <h2 id="axes-title">Columns</h2>
+          </div>
+          <span id="skew-value" class="metric">Skew --</span>
+        </header>
+        <div class="axes">
+          <article class="axis">
+            <header>
+              <span class="axis-name">A</span>
+              <strong id="axis-a-position">-- mm</strong>
+            </header>
+            <div class="travel" aria-hidden="true"><span id="axis-a-level"></span></div>
+            <footer>
+              <span id="axis-a-lower">MIN</span>
+              <span id="axis-a-hall">Hall --</span>
+              <span id="axis-a-upper">MAX</span>
+            </footer>
+          </article>
+          <article class="axis">
+            <header>
+              <span class="axis-name">B</span>
+              <strong id="axis-b-position">-- mm</strong>
+            </header>
+            <div class="travel" aria-hidden="true"><span id="axis-b-level"></span></div>
+            <footer>
+              <span id="axis-b-lower">MIN</span>
+              <span id="axis-b-hall">Hall --</span>
+              <span id="axis-b-upper">MAX</span>
+            </footer>
+          </article>
+          <article class="axis">
+            <header>
+              <span class="axis-name">C</span>
+              <strong id="axis-c-position">-- mm</strong>
+            </header>
+            <div class="travel" aria-hidden="true"><span id="axis-c-level"></span></div>
+            <footer>
+              <span id="axis-c-lower">MIN</span>
+              <span id="axis-c-hall">Hall --</span>
+              <span id="axis-c-upper">MAX</span>
+            </footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="motion-panel" aria-labelledby="motion-title">
+        <header class="section-heading">
+          <div>
+            <span class="label">Hold to run</span>
+            <h2 id="motion-title">Movement</h2>
+          </div>
+          <span id="motion-lock" class="lock-state">Locked</span>
+        </header>
+        <div class="controls">
+          <button id="move-up" class="motion hold-control" type="button" data-action="1"
+                  aria-label="Raise desk">
+            <span aria-hidden="true">&#8593;</span>
+            <small>Raise</small>
+          </button>
+          <button id="move-down" class="motion hold-control" type="button" data-action="2"
+                  aria-label="Lower desk">
+            <span aria-hidden="true">&#8595;</span>
+            <small>Lower</small>
+          </button>
+        </div>
+        <button id="calibrate" class="calibrate hold-control" type="button" data-action="3">
+          <strong>CAL</strong>
+          <span>Hold to calibrate down</span>
+        </button>
+        <p id="control-reason" class="control-reason">Sign in to enable remote control.</p>
+      </section>
+    </div>
+
+    <section class="preset-panel" aria-labelledby="presets-title">
+      <header class="section-heading">
+        <div>
+          <span class="label">Hold to run</span>
+          <h2 id="presets-title">Presets</h2>
+        </div>
+      </header>
+      <div class="presets">
+        <article>
+          <button class="preset-motion hold-control" type="button" data-slot="0"
+                  data-action="4" aria-label="Move to preset 1">M1</button>
+          <div><strong id="preset-1-height">--</strong><span>Preset 1</span></div>
+          <button class="preset-save" type="button" data-slot="0">Save</button>
+        </article>
+        <article>
+          <button class="preset-motion hold-control" type="button" data-slot="1"
+                  data-action="5" aria-label="Move to preset 2">M2</button>
+          <div><strong id="preset-2-height">--</strong><span>Preset 2</span></div>
+          <button class="preset-save" type="button" data-slot="1">Save</button>
+        </article>
+        <article>
+          <button class="preset-motion hold-control" type="button" data-slot="2"
+                  data-action="6" aria-label="Move to preset 3">M3</button>
+          <div><strong id="preset-3-height">--</strong><span>Preset 3</span></div>
+          <button class="preset-save" type="button" data-slot="2">Save</button>
+        </article>
       </div>
     </section>
 
-    <section id="provisioning" class="provisioning hidden">
-      <header>
-        <span class="label">Red</span>
-        <strong>Configurar WiFi</strong>
-      </header>
-      <form id="wifi-form">
-        <label>SSID<input name="ssid" maxlength="32" required autocomplete="username"></label>
-        <label>Contrasena<input name="password" type="password" minlength="8"
-               maxlength="64" required autocomplete="current-password"></label>
-        <button type="submit">Conectar</button>
-      </form>
-    </section>
+    <details class="settings-panel">
+      <summary>
+        <span><span class="label">Configuration</span><strong>Control and network</strong></span>
+        <span class="disclosure" aria-hidden="true">+</span>
+      </summary>
+      <div class="settings-content">
+        <section>
+          <header class="subheading">
+            <div>
+              <h3>Control mode</h3>
+              <p>Physical buttons are optional. Hybrid accepts local and authenticated remote input.</p>
+            </div>
+          </header>
+          <div class="segments" role="group" aria-label="Control mode">
+            <button type="button" data-mode="local">Local only</button>
+            <button type="button" data-mode="hybrid">Hybrid</button>
+            <button type="button" data-mode="mobile">Remote only</button>
+          </div>
+        </section>
+
+        <section id="provisioning" class="provisioning hidden">
+          <header class="subheading">
+            <div><h3>WiFi provisioning</h3><p>Credentials are stored on this device.</p></div>
+          </header>
+          <form id="wifi-form">
+            <label>Network name
+              <input name="ssid" maxlength="32" required autocomplete="username">
+            </label>
+            <label>Password
+              <span class="password-field">
+                <input id="wifi-password" name="password" type="password" minlength="8"
+                       maxlength="64" required autocomplete="current-password">
+                <button id="toggle-wifi-password" type="button" aria-label="Show password">Show</button>
+              </span>
+            </label>
+            <div class="form-actions">
+              <button id="clear-wifi-form" class="secondary-command" type="button">Clear</button>
+              <button class="primary-command" type="submit">Connect</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </details>
+
+    <details class="settings-panel">
+      <summary>
+        <span><span class="label">Maintenance</span><strong>Diagnostics and firmware</strong></span>
+        <span class="disclosure" aria-hidden="true">+</span>
+      </summary>
+      <div class="settings-content maintenance-grid">
+        <section>
+          <header class="subheading"><div><h3>Runtime</h3><p id="firmware-version">--</p></div></header>
+          <dl class="diagnostics">
+            <div><dt>Free heap</dt><dd id="free-heap">--</dd></div>
+            <div><dt>Minimum heap</dt><dd id="minimum-heap">--</dd></div>
+            <div><dt>Dropped logs</dt><dd id="dropped-logs">--</dd></div>
+            <div><dt>Reset reason</dt><dd id="reset-reason">--</dd></div>
+          </dl>
+        </section>
+        <section class="firmware-update">
+          <header class="subheading">
+            <div><h3>Signed firmware update</h3><p>Only a compatible signed binary is accepted.</p></div>
+          </header>
+          <div class="update-controls">
+            <input id="firmware-file" type="file" accept=".bin,application/octet-stream">
+            <button id="update-firmware" class="primary-command" type="button" disabled>Install</button>
+          </div>
+          <div id="update-progress" class="progress hidden" role="progressbar" aria-label="Firmware update">
+            <span></span>
+          </div>
+        </section>
+      </div>
+    </details>
   </main>
 
   <dialog id="login-dialog">
-    <form id="login-form" method="dialog">
-      <p class="eyebrow">DEVICE ACCESS</p>
-      <h2>L-Desk</h2>
-      <label>Token del dispositivo
+    <form id="login-form">
+      <header class="dialog-heading">
+        <div><p class="eyebrow">Device access</p><h2>Sign in to L-Desk</h2></div>
+        <button class="dialog-close" type="button" data-close-dialog="login-dialog"
+                aria-label="Close sign in">&times;</button>
+      </header>
+      <label>Administration token
         <input name="token" inputmode="text" minlength="32" maxlength="32"
                pattern="[0-9a-fA-F]{32}" required autocomplete="off">
       </label>
-      <p id="login-error" class="form-error"></p>
-      <button type="submit">Entrar</button>
+      <p id="login-error" class="form-error" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button class="secondary-command" type="button" data-close-dialog="login-dialog">
+          Not now
+        </button>
+        <button class="primary-command" type="submit">Sign in</button>
+      </div>
     </form>
   </dialog>
 
+  <dialog id="confirm-dialog">
+    <form id="confirm-form">
+      <header class="dialog-heading">
+        <div><p class="eyebrow">Confirm action</p><h2 id="confirm-title">Continue?</h2></div>
+        <button class="dialog-close" type="button" data-confirm="cancel"
+                aria-label="Cancel">&times;</button>
+      </header>
+      <p id="confirm-detail" class="dialog-copy"></p>
+      <div class="dialog-actions">
+        <button class="secondary-command" type="button" data-confirm="cancel">Cancel</button>
+        <button id="confirm-accept" class="primary-command" type="submit">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="/app.js"></script>
 </body>
 </html>
