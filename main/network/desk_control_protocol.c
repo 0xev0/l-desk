@@ -30,6 +30,15 @@ static bool decode_action(uint8_t encoded, desk_control_action_t *action)
     case 3U:
         *action = DESK_CONTROL_ACTION_CALIBRATE;
         return true;
+    case 4U:
+        *action = DESK_CONTROL_ACTION_PRESET_1;
+        return true;
+    case 5U:
+        *action = DESK_CONTROL_ACTION_PRESET_2;
+        return true;
+    case 6U:
+        *action = DESK_CONTROL_ACTION_PRESET_3;
+        return true;
     default:
         return false;
     }

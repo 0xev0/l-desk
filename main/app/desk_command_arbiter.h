@@ -22,6 +22,9 @@ typedef enum {
     DESK_CONTROL_ACTION_UP,
     DESK_CONTROL_ACTION_DOWN,
     DESK_CONTROL_ACTION_CALIBRATE,
+    DESK_CONTROL_ACTION_PRESET_1,
+    DESK_CONTROL_ACTION_PRESET_2,
+    DESK_CONTROL_ACTION_PRESET_3,
 } desk_control_action_t;
 
 typedef struct {
@@ -54,6 +57,7 @@ typedef struct {
     bool remote_active;
     bool remote_expired;
     bool remote_preempted;
+    desk_control_action_t action;
     desk_control_source_t source;
 } desk_resolved_controls_t;
 

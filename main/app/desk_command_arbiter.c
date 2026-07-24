@@ -12,7 +12,10 @@ static bool mode_is_valid(desk_control_mode_t mode)
 static bool action_is_valid(desk_control_action_t action)
 {
     return action == DESK_CONTROL_ACTION_STOP || action == DESK_CONTROL_ACTION_UP ||
-           action == DESK_CONTROL_ACTION_DOWN || action == DESK_CONTROL_ACTION_CALIBRATE;
+           action == DESK_CONTROL_ACTION_DOWN || action == DESK_CONTROL_ACTION_CALIBRATE ||
+           action == DESK_CONTROL_ACTION_PRESET_1 ||
+           action == DESK_CONTROL_ACTION_PRESET_2 ||
+           action == DESK_CONTROL_ACTION_PRESET_3;
 }
 
 static uint64_t saturating_deadline(uint64_t now_ms, uint32_t duration_ms)
@@ -27,6 +30,7 @@ static bool local_is_active(const desk_local_controls_t *local)
 
 static void apply_action(desk_resolved_controls_t *resolved, desk_control_action_t action)
 {
+    resolved->action = action;
     switch (action) {
     case DESK_CONTROL_ACTION_STOP:
         break;
@@ -38,6 +42,10 @@ static void apply_action(desk_resolved_controls_t *resolved, desk_control_action
         break;
     case DESK_CONTROL_ACTION_CALIBRATE:
         resolved->calibrate_pressed = true;
+        break;
+    case DESK_CONTROL_ACTION_PRESET_1:
+    case DESK_CONTROL_ACTION_PRESET_2:
+    case DESK_CONTROL_ACTION_PRESET_3:
         break;
     }
 }
@@ -145,7 +153,7 @@ bool desk_command_arbiter_submit_remote(desk_command_arbiter_t *arbiter,
 desk_resolved_controls_t desk_command_arbiter_resolve(
     desk_command_arbiter_t *arbiter, const desk_local_controls_t *local, uint64_t now_ms)
 {
-    desk_resolved_controls_t resolved = {0};
+    desk_resolved_controls_t resolved = {.action = DESK_CONTROL_ACTION_STOP};
     if (arbiter == NULL || local == NULL || !mode_is_valid(arbiter->mode)) {
         return resolved;
     }
@@ -157,6 +165,13 @@ desk_resolved_controls_t desk_command_arbiter_resolve(
         resolved.down_pressed = local->down_pressed;
         resolved.calibrate_pressed = local->calibrate_pressed;
         resolved.source = DESK_CONTROL_SOURCE_LOCAL;
+        if (local->up_pressed && !local->down_pressed) {
+            resolved.action = DESK_CONTROL_ACTION_UP;
+        } else if (local->down_pressed && !local->up_pressed) {
+            resolved.action = DESK_CONTROL_ACTION_DOWN;
+        } else if (local->calibrate_pressed) {
+            resolved.action = DESK_CONTROL_ACTION_CALIBRATE;
+        }
         if (arbiter->remote_active) {
             desk_command_arbiter_cancel_remote(arbiter);
             resolved.remote_preempted = true;

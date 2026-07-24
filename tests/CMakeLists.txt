@@ -69,6 +69,17 @@ target_include_directories(test_command_arbiter PRIVATE
 
 add_test(NAME test_command_arbiter COMMAND test_command_arbiter)
 
+add_executable(test_preset_controller
+    test_preset_controller.c
+    ../main/app/desk_preset_controller.c
+)
+target_include_directories(test_preset_controller PRIVATE
+    ../main/app
+    ../main/domain
+)
+
+add_test(NAME test_preset_controller COMMAND test_preset_controller)
+
 add_executable(test_control_protocol
     test_control_protocol.c
     ../main/network/desk_control_protocol.c

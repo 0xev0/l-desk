@@ -35,8 +35,11 @@ static void every_action_decodes_with_network_byte_order(void)
         DESK_CONTROL_ACTION_UP,
         DESK_CONTROL_ACTION_DOWN,
         DESK_CONTROL_ACTION_CALIBRATE,
+        DESK_CONTROL_ACTION_PRESET_1,
+        DESK_CONTROL_ACTION_PRESET_2,
+        DESK_CONTROL_ACTION_PRESET_3,
     };
-    for (uint8_t encoded = 0U; encoded < 4U; ++encoded) {
+    for (uint8_t encoded = 0U; encoded < 7U; ++encoded) {
         uint8_t frame[DESK_CONTROL_COMMAND_FRAME_SIZE];
         make_valid_frame(frame, encoded, 0x12345678U, 250U);
         desk_remote_command_t command;
@@ -83,7 +86,7 @@ static void invalid_action_sequence_and_ttl_are_rejected(void)
 {
     uint8_t frame[DESK_CONTROL_COMMAND_FRAME_SIZE];
     desk_remote_command_t command;
-    make_valid_frame(frame, 4U, 1U, 100U);
+    make_valid_frame(frame, 7U, 1U, 100U);
     TEST_ASSERT_EQUAL_INT(
         DESK_PROTOCOL_PARSE_INVALID_ACTION,
         desk_control_protocol_parse_command(frame, sizeof(frame), 1U, &command));

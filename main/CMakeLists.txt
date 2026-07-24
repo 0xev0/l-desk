@@ -5,6 +5,7 @@ idf_component_register(
         "app/desk_app_runtime.c"
         "app/desk_command_arbiter.c"
         "app/desk_input_filter.c"
+        "app/desk_preset_controller.c"
         "domain/desk_controller.c"
         "domain/motor_axis.c"
         "domain/position_scale.c"
