@@ -2,7 +2,7 @@
 
 ## Host Suite
 
-Sixteen CTest executables cover domain, application, input filtering, fake HAL,
+Seventeen CTest executables cover domain, application, input filtering, fake HAL,
 BTS7960 sequencing, and output invariants without ESP-IDF hardware.
 
 ```sh
@@ -54,6 +54,8 @@ explicitly tested.
   fields, actions, sequences, and TTL bounds
 - Administration-token parsing, constant-time session lookup, login rate
   limiting, fixed session capacity, expiry, duplicate randomness, and logout
+- WiFi SSID/PSK boundary lengths, control-character rejection, and every
+  persisted control mode
 - Explicit long-hold/release error clear without automatic motion
 - Deterministic repeated ticks and saturating timing arithmetic
 

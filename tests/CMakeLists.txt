@@ -90,6 +90,17 @@ target_include_directories(test_auth PRIVATE
 
 add_test(NAME test_auth COMMAND test_auth)
 
+add_executable(test_network_config
+    test_network_config.c
+    ../main/network/desk_network_config.c
+)
+target_include_directories(test_network_config PRIVATE
+    ../main/network
+    ../main/app
+)
+
+add_test(NAME test_network_config COMMAND test_network_config)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c

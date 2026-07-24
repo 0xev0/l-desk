@@ -75,6 +75,12 @@ with an eight-hour maximum lifetime. Secrets use bounded hexadecimal parsing
 and constant-time comparison. Five failed logins block new attempts for one
 minute. Sessions disappear on reboot and can be logged out explicitly.
 
+WiFi SSID and PSK are validated with fixed maximum lengths and persisted as one
+versioned NVS blob, so a power loss cannot commit half of a credential pair.
+The selected control mode is stored separately. NVS encryption is not yet
+enabled; physical flash access can recover credentials until the P4 security
+gate is completed.
+
 ## WebSocket Command Frame
 
 Movement uses a fixed 12-byte binary frame. Multi-byte values are big-endian.

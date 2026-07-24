@@ -11,6 +11,8 @@ idf_component_register(
         "hal/bts7960_sequence.c"
         "network/desk_control_protocol.c"
         "network/desk_auth.c"
+        "network/desk_network_config.c"
+        "network/esp_network_store.c"
         "platform/bts7960_driver.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
@@ -29,6 +31,7 @@ idf_component_register(
         esp_driver_pcnt
         esp_timer
         esp_system
+        nvs_flash
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE
