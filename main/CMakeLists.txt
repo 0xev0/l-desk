@@ -3,6 +3,7 @@ idf_component_register(
         "app_main.c"
         "app/desk_app.c"
         "app/desk_app_runtime.c"
+        "app/desk_boot_health.c"
         "app/desk_command_arbiter.c"
         "app/desk_input_filter.c"
         "app/desk_preset_controller.c"
@@ -24,6 +25,7 @@ idf_component_register(
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
         "platform/esp_hall_hal.c"
+        "platform/esp_ota_guard.c"
         "platform/esp_time_hal.c"
     INCLUDE_DIRS
         "."
@@ -38,6 +40,7 @@ idf_component_register(
         esp_driver_pcnt
         esp_timer
         esp_system
+        app_update
         esp_event
         esp_http_server
         esp_netif

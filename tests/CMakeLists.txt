@@ -93,6 +93,19 @@ target_include_directories(test_preset_record PRIVATE
 
 add_test(NAME test_preset_record COMMAND test_preset_record)
 
+add_executable(test_boot_health
+    test_boot_health.c
+    ../main/app/desk_boot_health.c
+    ../main/domain/motor_axis.c
+)
+target_include_directories(test_boot_health PRIVATE
+    ../main/app
+    ../main/domain
+    ../main/hal
+)
+
+add_test(NAME test_boot_health COMMAND test_boot_health)
+
 add_executable(test_control_protocol
     test_control_protocol.c
     ../main/network/desk_control_protocol.c
