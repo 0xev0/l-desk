@@ -37,14 +37,12 @@ typedef struct {
 
 bool desk_auth_format_secret(const uint8_t secret[DESK_AUTH_SECRET_BYTES],
                              char output[DESK_AUTH_SECRET_TEXT_SIZE]);
-void desk_authenticator_init(
-    desk_authenticator_t *authenticator,
-    const uint8_t admin_secret[DESK_AUTH_SECRET_BYTES]);
-desk_auth_login_result_t desk_authenticator_login(
-    desk_authenticator_t *authenticator, const char *admin_secret_hex,
-    const uint8_t session_random[DESK_AUTH_SECRET_BYTES], uint64_t now_ms,
-    char session_hex[DESK_AUTH_SECRET_TEXT_SIZE]);
+void desk_authenticator_init(desk_authenticator_t *authenticator,
+                             const uint8_t admin_secret[DESK_AUTH_SECRET_BYTES]);
+desk_auth_login_result_t
+desk_authenticator_login(desk_authenticator_t *authenticator, const char *admin_secret_hex,
+                         const uint8_t session_random[DESK_AUTH_SECRET_BYTES], uint64_t now_ms,
+                         char session_hex[DESK_AUTH_SECRET_TEXT_SIZE]);
 bool desk_authenticator_validate_session(desk_authenticator_t *authenticator,
                                          const char *session_hex, uint64_t now_ms);
-bool desk_authenticator_logout(desk_authenticator_t *authenticator,
-                               const char *session_hex);
+bool desk_authenticator_logout(desk_authenticator_t *authenticator, const char *session_hex);

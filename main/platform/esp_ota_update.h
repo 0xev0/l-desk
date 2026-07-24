@@ -16,7 +16,6 @@ typedef struct {
 } esp_ota_update_t;
 
 esp_err_t esp_ota_update_begin(esp_ota_update_t *update, size_t image_size);
-esp_err_t esp_ota_update_write(esp_ota_update_t *update, const void *data,
-                               size_t data_size);
+esp_err_t esp_ota_update_write(esp_ota_update_t *update, const void *data, size_t data_size);
 esp_err_t esp_ota_update_finish(esp_ota_update_t *update);
 void esp_ota_update_abort(esp_ota_update_t *update);

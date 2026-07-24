@@ -26,8 +26,7 @@ desk_form_result_t desk_form_decode_component(const char *encoded, size_t encode
                                               char *decoded, size_t decoded_capacity,
                                               size_t *decoded_length)
 {
-    if (encoded == NULL || decoded == NULL || decoded_capacity == 0U ||
-        decoded_length == NULL) {
+    if (encoded == NULL || decoded == NULL || decoded_capacity == 0U || decoded_length == NULL) {
         return DESK_FORM_INVALID_ARGUMENT;
     }
 
@@ -70,23 +69,21 @@ static desk_form_result_t decode_and_compare_key(const char *encoded, size_t enc
 {
     char decoded[DESK_FORM_KEY_BUFFER_SIZE];
     size_t decoded_length;
-    desk_form_result_t result = desk_form_decode_component(
-        encoded, encoded_length, decoded, sizeof(decoded), &decoded_length);
+    desk_form_result_t result = desk_form_decode_component(encoded, encoded_length, decoded,
+                                                           sizeof(decoded), &decoded_length);
     if (result != DESK_FORM_OK) {
         return result;
     }
     size_t expected_length = strlen(expected);
-    *matches = decoded_length == expected_length &&
-               memcmp(decoded, expected, expected_length) == 0;
+    *matches = decoded_length == expected_length && memcmp(decoded, expected, expected_length) == 0;
     return DESK_FORM_OK;
 }
 
 desk_form_result_t desk_form_get_value(const char *form, size_t form_length, const char *key,
-                                       char *value, size_t value_capacity,
-                                       size_t *value_length)
+                                       char *value, size_t value_capacity, size_t *value_length)
 {
-    if (form == NULL || key == NULL || key[0] == '\0' || value == NULL ||
-        value_capacity == 0U || value_length == NULL) {
+    if (form == NULL || key == NULL || key[0] == '\0' || value == NULL || value_capacity == 0U ||
+        value_length == NULL) {
         return DESK_FORM_INVALID_ARGUMENT;
     }
 
@@ -107,8 +104,8 @@ desk_form_result_t desk_form_get_value(const char *form, size_t form_length, con
         }
 
         bool matches;
-        desk_form_result_t result = decode_and_compare_key(
-            &form[field_start], equals - field_start, key, &matches);
+        desk_form_result_t result =
+            decode_and_compare_key(&form[field_start], equals - field_start, key, &matches);
         if (result != DESK_FORM_OK) {
             return result;
         }
@@ -116,8 +113,8 @@ desk_form_result_t desk_form_get_value(const char *form, size_t form_length, con
             if (found) {
                 return DESK_FORM_DUPLICATE_KEY;
             }
-            result = desk_form_decode_component(&form[equals + 1U], field_end - equals - 1U,
-                                                value, value_capacity, value_length);
+            result = desk_form_decode_component(&form[equals + 1U], field_end - equals - 1U, value,
+                                                value_capacity, value_length);
             if (result != DESK_FORM_OK) {
                 return result;
             }

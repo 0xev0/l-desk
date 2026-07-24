@@ -30,8 +30,7 @@ static bool apply_persisted_presets(const desk_preset_bank_t *presets)
             continue;
         }
         bool accepted = false;
-        for (unsigned attempt = 0U; attempt < DESK_NETWORK_CONTROL_READY_ATTEMPTS;
-             ++attempt) {
+        for (unsigned attempt = 0U; attempt < DESK_NETWORK_CONTROL_READY_ATTEMPTS; ++attempt) {
             if (desk_app_queue_preset_target(slot, presets->target_um[slot])) {
                 accepted = true;
                 break;
@@ -52,8 +51,7 @@ static void log_provisioning_credentials(const esp_network_service_t *service)
         return;
     }
     ESP_LOGW(TAG, "provisioning SSID: %s", service->wifi.provisioning_ssid);
-    ESP_LOGW(TAG, "provisioning password: %s",
-             service->store.provisioning_ap_password);
+    ESP_LOGW(TAG, "provisioning password: %s", service->store.provisioning_ap_password);
     ESP_LOGW(TAG, "device administration token: %s", admin_secret);
     ESP_LOGW(TAG, "credentials are shown only on the local serial console");
 }
@@ -86,8 +84,8 @@ bool esp_network_service_start(void)
         ESP_LOGE(TAG, "WiFi initialization failed: %s", esp_err_to_name(result));
         return false;
     }
-    result = esp_http_api_start(&network_service.http, &network_service.store,
-                                &network_service.wifi);
+    result =
+        esp_http_api_start(&network_service.http, &network_service.store, &network_service.wifi);
     if (result != ESP_OK) {
         ESP_LOGE(TAG, "HTTP API initialization failed: %s", esp_err_to_name(result));
         return false;

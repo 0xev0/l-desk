@@ -15,5 +15,4 @@ desk_form_result_t desk_form_decode_component(const char *encoded, size_t encode
                                               char *decoded, size_t decoded_capacity,
                                               size_t *decoded_length);
 desk_form_result_t desk_form_get_value(const char *form, size_t form_length, const char *key,
-                                       char *value, size_t value_capacity,
-                                       size_t *value_length);
+                                       char *value, size_t value_capacity, size_t *value_length);

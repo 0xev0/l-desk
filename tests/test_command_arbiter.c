@@ -190,8 +190,8 @@ static void local_preemption_revokes_the_session_and_blocks_old_heartbeats(void)
     desk_remote_command_t remote = remote_command(10U, 1U, DESK_CONTROL_ACTION_UP, 200U);
     TEST_ASSERT_TRUE(desk_command_arbiter_submit_remote(&arbiter, &remote, 0U));
 
-    desk_resolved_controls_t resolved = desk_command_arbiter_resolve(
-        &arbiter, &(desk_local_controls_t){.down_pressed = true}, 1U);
+    desk_resolved_controls_t resolved =
+        desk_command_arbiter_resolve(&arbiter, &(desk_local_controls_t){.down_pressed = true}, 1U);
     TEST_ASSERT_TRUE(resolved.remote_preempted);
     TEST_ASSERT_FALSE(arbiter.remote_lease_authorized);
 

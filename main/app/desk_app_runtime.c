@@ -37,8 +37,8 @@ typedef struct {
     TaskHandle_t task_handle;
     QueueHandle_t request_queue;
     StaticQueue_t request_queue_storage;
-    uint8_t request_queue_buffer[BOARD_CONTROL_REQUEST_QUEUE_DEPTH *
-                                 sizeof(desk_runtime_request_t)];
+    uint8_t
+        request_queue_buffer[BOARD_CONTROL_REQUEST_QUEUE_DEPTH * sizeof(desk_runtime_request_t)];
     desk_app_status_t status;
     bool status_valid;
     atomic_bool ready;
@@ -85,8 +85,7 @@ static void process_control_requests(desk_app_runtime_t *desk_runtime)
                                              (int32_t)BOARD_ACTUATOR_TRAVEL_UM);
             break;
         case DESK_RUNTIME_REQUEST_MOTION_INHIBIT:
-            (void)desk_app_set_motion_inhibited(&desk_runtime->app,
-                                                request.motion_inhibited);
+            (void)desk_app_set_motion_inhibited(&desk_runtime->app, request.motion_inhibited);
             break;
         }
     }
@@ -132,17 +131,17 @@ bool desk_app_start(void)
     runtime.config.maximum_duty_permille = BOARD_MOTOR_MAX_DUTY_PERMILLE;
     runtime.config.synchronization_trim_permille = BOARD_SYNCHRONIZATION_TRIM_PERMILLE;
     runtime.platform = esp_desk_platform_create(&runtime.platform_context);
-    runtime.request_queue = xQueueCreateStatic(
-        BOARD_CONTROL_REQUEST_QUEUE_DEPTH, sizeof(desk_runtime_request_t),
-        runtime.request_queue_buffer, &runtime.request_queue_storage);
+    runtime.request_queue =
+        xQueueCreateStatic(BOARD_CONTROL_REQUEST_QUEUE_DEPTH, sizeof(desk_runtime_request_t),
+                           runtime.request_queue_buffer, &runtime.request_queue_storage);
     if (runtime.request_queue == NULL) {
         return false;
     }
 
-    runtime.task_handle = xTaskCreateStaticPinnedToCore(
-        control_task, "desk_control", BOARD_CONTROL_TASK_STACK_WORDS, &runtime,
-        BOARD_CONTROL_TASK_PRIORITY, runtime.task_stack, &runtime.task_storage,
-        BOARD_CONTROL_TASK_CORE);
+    runtime.task_handle =
+        xTaskCreateStaticPinnedToCore(control_task, "desk_control", BOARD_CONTROL_TASK_STACK_WORDS,
+                                      &runtime, BOARD_CONTROL_TASK_PRIORITY, runtime.task_stack,
+                                      &runtime.task_storage, BOARD_CONTROL_TASK_CORE);
     return runtime.task_handle != NULL;
 }
 
@@ -170,8 +169,7 @@ bool desk_app_get_runtime_diagnostics(desk_runtime_diagnostics_t *diagnostics)
 
 bool desk_app_get_runtime_status(desk_app_status_t *status)
 {
-    if (status == NULL ||
-        !atomic_load_explicit(&runtime.ready, memory_order_acquire)) {
+    if (status == NULL || !atomic_load_explicit(&runtime.ready, memory_order_acquire)) {
         return false;
     }
 
@@ -185,8 +183,7 @@ bool desk_app_get_runtime_status(desk_app_status_t *status)
     return valid;
 }
 
-bool desk_app_get_runtime_diagnostic_log(desk_diagnostic_log_t *log,
-                                         bool *recovered_storage_fault)
+bool desk_app_get_runtime_diagnostic_log(desk_diagnostic_log_t *log, bool *recovered_storage_fault)
 {
     return atomic_load_explicit(&runtime.ready, memory_order_acquire) &&
            esp_desk_platform_get_diagnostic_log(&runtime.platform_context, log,

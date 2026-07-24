@@ -12,7 +12,7 @@ typedef enum {
     DESK_HTTP_COOKIE_DUPLICATE,
 } desk_http_cookie_result_t;
 
-desk_http_cookie_result_t desk_http_extract_cookie(
-    const char *header, size_t header_length, const char *name, char *value,
-    size_t value_capacity);
+desk_http_cookie_result_t desk_http_extract_cookie(const char *header, size_t header_length,
+                                                   const char *name, char *value,
+                                                   size_t value_capacity);
 bool desk_http_origin_matches_host(const char *origin, const char *host);

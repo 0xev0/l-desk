@@ -13,8 +13,7 @@ static bool action_is_valid(desk_control_action_t action)
 {
     return action == DESK_CONTROL_ACTION_STOP || action == DESK_CONTROL_ACTION_UP ||
            action == DESK_CONTROL_ACTION_DOWN || action == DESK_CONTROL_ACTION_CALIBRATE ||
-           action == DESK_CONTROL_ACTION_PRESET_1 ||
-           action == DESK_CONTROL_ACTION_PRESET_2 ||
+           action == DESK_CONTROL_ACTION_PRESET_1 || action == DESK_CONTROL_ACTION_PRESET_2 ||
            action == DESK_CONTROL_ACTION_PRESET_3;
 }
 
@@ -83,8 +82,7 @@ bool desk_command_arbiter_set_mode(desk_command_arbiter_t *arbiter, desk_control
     return true;
 }
 
-bool desk_command_arbiter_acquire_remote_lease(desk_command_arbiter_t *arbiter,
-                                               uint64_t lease_id)
+bool desk_command_arbiter_acquire_remote_lease(desk_command_arbiter_t *arbiter, uint64_t lease_id)
 {
     if (arbiter == NULL || arbiter->mode == DESK_CONTROL_MODE_LOCAL_ONLY || lease_id == 0U ||
         arbiter->remote_lease_authorized) {
@@ -96,8 +94,7 @@ bool desk_command_arbiter_acquire_remote_lease(desk_command_arbiter_t *arbiter,
     return true;
 }
 
-bool desk_command_arbiter_release_remote_lease(desk_command_arbiter_t *arbiter,
-                                               uint64_t lease_id)
+bool desk_command_arbiter_release_remote_lease(desk_command_arbiter_t *arbiter, uint64_t lease_id)
 {
     if (arbiter == NULL || lease_id == 0U || !arbiter->remote_lease_authorized ||
         lease_id != arbiter->remote_lease_id) {
@@ -117,16 +114,12 @@ static bool expire_remote_if_needed(desk_command_arbiter_t *arbiter, uint64_t no
 }
 
 bool desk_command_arbiter_submit_remote(desk_command_arbiter_t *arbiter,
-                                        const desk_remote_command_t *command,
-                                        uint64_t now_ms)
+                                        const desk_remote_command_t *command, uint64_t now_ms)
 {
-    if (arbiter == NULL || command == NULL ||
-        arbiter->mode == DESK_CONTROL_MODE_LOCAL_ONLY || command->lease_id == 0U ||
-        command->sequence == 0U || !action_is_valid(command->action) ||
-        command->valid_for_ms == 0U ||
-        command->valid_for_ms > DESK_REMOTE_COMMAND_MAX_LEASE_MS ||
-        !arbiter->remote_lease_authorized ||
-        command->lease_id != arbiter->remote_lease_id) {
+    if (arbiter == NULL || command == NULL || arbiter->mode == DESK_CONTROL_MODE_LOCAL_ONLY ||
+        command->lease_id == 0U || command->sequence == 0U || !action_is_valid(command->action) ||
+        command->valid_for_ms == 0U || command->valid_for_ms > DESK_REMOTE_COMMAND_MAX_LEASE_MS ||
+        !arbiter->remote_lease_authorized || command->lease_id != arbiter->remote_lease_id) {
         return false;
     }
 
@@ -150,8 +143,9 @@ bool desk_command_arbiter_submit_remote(desk_command_arbiter_t *arbiter,
     return true;
 }
 
-desk_resolved_controls_t desk_command_arbiter_resolve(
-    desk_command_arbiter_t *arbiter, const desk_local_controls_t *local, uint64_t now_ms)
+desk_resolved_controls_t desk_command_arbiter_resolve(desk_command_arbiter_t *arbiter,
+                                                      const desk_local_controls_t *local,
+                                                      uint64_t now_ms)
 {
     desk_resolved_controls_t resolved = {.action = DESK_CONTROL_ACTION_STOP};
     if (arbiter == NULL || local == NULL || !mode_is_valid(arbiter->mode)) {

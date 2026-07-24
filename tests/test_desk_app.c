@@ -17,13 +17,12 @@ static void run_remote_hold(desk_app_t *app, fake_platform_t *fake, uint64_t lea
         if (tick % 10U == 0U) {
             ++*sequence;
             TEST_ASSERT_TRUE(desk_app_submit_remote_command(
-                app,
-                &(desk_remote_command_t){
-                    .lease_id = lease_id,
-                    .sequence = *sequence,
-                    .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
-                    .action = action,
-                }));
+                app, &(desk_remote_command_t){
+                         .lease_id = lease_id,
+                         .sequence = *sequence,
+                         .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+                         .action = action,
+                     }));
         }
         run_steps(app, fake, 1U);
     }
@@ -366,14 +365,13 @@ static void mobile_only_can_clear_an_error_without_physical_buttons(void)
     TEST_ASSERT_EQUAL_INT(DESK_STATE_ERROR, fake.outputs.state);
 
     ++sequence;
-    TEST_ASSERT_TRUE(desk_app_submit_remote_command(
-        &app,
-        &(desk_remote_command_t){
-            .lease_id = lease_id,
-            .sequence = sequence,
-            .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
-            .action = DESK_CONTROL_ACTION_STOP,
-        }));
+    TEST_ASSERT_TRUE(
+        desk_app_submit_remote_command(&app, &(desk_remote_command_t){
+                                                 .lease_id = lease_id,
+                                                 .sequence = sequence,
+                                                 .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+                                                 .action = DESK_CONTROL_ACTION_STOP,
+                                             }));
     run_steps(&app, &fake, 1U);
     TEST_ASSERT_EQUAL_INT(DESK_STATE_SAFE_START, fake.outputs.state);
     assert_outputs_stopped(fake.outputs);
@@ -394,14 +392,13 @@ static void remote_preset_is_hold_to_run_and_latches_stop_at_target(void)
 
     const uint64_t lease_id = 222U;
     TEST_ASSERT_TRUE(desk_app_acquire_remote_lease(&app, lease_id));
-    TEST_ASSERT_TRUE(desk_app_submit_remote_command(
-        &app,
-        &(desk_remote_command_t){
-            .lease_id = lease_id,
-            .sequence = 1U,
-            .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
-            .action = DESK_CONTROL_ACTION_PRESET_1,
-        }));
+    TEST_ASSERT_TRUE(
+        desk_app_submit_remote_command(&app, &(desk_remote_command_t){
+                                                 .lease_id = lease_id,
+                                                 .sequence = 1U,
+                                                 .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+                                                 .action = DESK_CONTROL_ACTION_PRESET_1,
+                                             }));
     run_steps(&app, &fake, 6U);
     TEST_ASSERT_EQUAL_INT(DESK_STATE_MOVING_UP, fake.outputs.state);
 
@@ -435,14 +432,13 @@ static void preset_motion_is_inhibited_without_a_position_reference(void)
     TEST_ASSERT_EQUAL_INT(DESK_STATE_UNREFERENCED, fake.outputs.state);
 
     TEST_ASSERT_TRUE(desk_app_acquire_remote_lease(&app, 333U));
-    TEST_ASSERT_TRUE(desk_app_submit_remote_command(
-        &app,
-        &(desk_remote_command_t){
-            .lease_id = 333U,
-            .sequence = 1U,
-            .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
-            .action = DESK_CONTROL_ACTION_PRESET_1,
-        }));
+    TEST_ASSERT_TRUE(
+        desk_app_submit_remote_command(&app, &(desk_remote_command_t){
+                                                 .lease_id = 333U,
+                                                 .sequence = 1U,
+                                                 .valid_for_ms = DESK_REMOTE_COMMAND_MAX_LEASE_MS,
+                                                 .action = DESK_CONTROL_ACTION_PRESET_1,
+                                             }));
     run_steps(&app, &fake, 6U);
     TEST_ASSERT_EQUAL_INT(DESK_STATE_UNREFERENCED, fake.outputs.state);
     assert_outputs_stopped(fake.outputs);

@@ -21,6 +21,7 @@ typedef enum {
     DESK_PROTOCOL_PARSE_RESERVED_BITS,
 } desk_protocol_parse_result_t;
 
-desk_protocol_parse_result_t desk_control_protocol_parse_command(
-    const uint8_t *frame, size_t frame_size, uint64_t lease_id,
-    desk_remote_command_t *command);
+desk_protocol_parse_result_t desk_control_protocol_parse_command(const uint8_t *frame,
+                                                                 size_t frame_size,
+                                                                 uint64_t lease_id,
+                                                                 desk_remote_command_t *command);

@@ -20,14 +20,13 @@ static void successful_login_creates_and_validates_bounded_session(void)
     desk_authenticator_t authenticator;
     desk_authenticator_init(&authenticator, admin);
     char session_hex[DESK_AUTH_SECRET_TEXT_SIZE];
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_OK,
-        desk_authenticator_login(&authenticator, admin_hex, random, 1000U, session_hex));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_OK, desk_authenticator_login(&authenticator, admin_hex,
+                                                                       random, 1000U, session_hex));
     TEST_ASSERT_TRUE(desk_authenticator_validate_session(&authenticator, session_hex, 1001U));
     TEST_ASSERT_TRUE(desk_authenticator_validate_session(
         &authenticator, session_hex, 1000U + DESK_AUTH_SESSION_LIFETIME_MS - 1U));
-    TEST_ASSERT_FALSE(desk_authenticator_validate_session(
-        &authenticator, session_hex, 1000U + DESK_AUTH_SESSION_LIFETIME_MS));
+    TEST_ASSERT_FALSE(desk_authenticator_validate_session(&authenticator, session_hex,
+                                                          1000U + DESK_AUTH_SESSION_LIFETIME_MS));
 }
 
 static void mixed_case_hex_is_accepted_but_malformed_secrets_are_denied(void)
@@ -47,9 +46,8 @@ static void mixed_case_hex_is_accepted_but_malformed_secrets_are_denied(void)
     desk_authenticator_t authenticator;
     desk_authenticator_init(&authenticator, admin);
     char session_hex[DESK_AUTH_SECRET_TEXT_SIZE];
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_OK,
-        desk_authenticator_login(&authenticator, admin_hex, random, 0U, session_hex));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_OK, desk_authenticator_login(&authenticator, admin_hex,
+                                                                       random, 0U, session_hex));
 
     admin_hex[0] = 'x';
     TEST_ASSERT_EQUAL_INT(
@@ -83,14 +81,12 @@ static void repeated_failures_are_rate_limited_then_recover(void)
             DESK_AUTH_LOGIN_DENIED,
             desk_authenticator_login(&authenticator, invalid_hex, random, 100U, session_hex));
     }
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_RATE_LIMITED,
-        desk_authenticator_login(&authenticator, valid_hex, random,
-                                 100U + DESK_AUTH_BLOCK_MS - 1U, session_hex));
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_OK,
-        desk_authenticator_login(&authenticator, valid_hex, random, 100U + DESK_AUTH_BLOCK_MS,
-                                 session_hex));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_RATE_LIMITED,
+                          desk_authenticator_login(&authenticator, valid_hex, random,
+                                                   100U + DESK_AUTH_BLOCK_MS - 1U, session_hex));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_OK,
+                          desk_authenticator_login(&authenticator, valid_hex, random,
+                                                   100U + DESK_AUTH_BLOCK_MS, session_hex));
 }
 
 static void sessions_have_fixed_capacity_and_logout_is_explicit(void)
@@ -113,16 +109,14 @@ static void sessions_have_fixed_capacity_and_logout_is_explicit(void)
     uint8_t extra[DESK_AUTH_SECRET_BYTES];
     fill_secret(extra, 100U);
     char ignored[DESK_AUTH_SECRET_TEXT_SIZE];
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_SESSION_CAPACITY,
-        desk_authenticator_login(&authenticator, admin_hex, extra, 1U, ignored));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_SESSION_CAPACITY,
+                          desk_authenticator_login(&authenticator, admin_hex, extra, 1U, ignored));
 
     TEST_ASSERT_TRUE(desk_authenticator_logout(&authenticator, sessions[1]));
     TEST_ASSERT_FALSE(desk_authenticator_validate_session(&authenticator, sessions[1], 2U));
     TEST_ASSERT_FALSE(desk_authenticator_logout(&authenticator, sessions[1]));
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_OK,
-        desk_authenticator_login(&authenticator, admin_hex, extra, 2U, ignored));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_OK,
+                          desk_authenticator_login(&authenticator, admin_hex, extra, 2U, ignored));
 }
 
 static void invalid_initialization_random_and_arguments_fail_closed(void)
@@ -148,9 +142,8 @@ static void invalid_initialization_random_and_arguments_fail_closed(void)
     TEST_ASSERT_FALSE(desk_auth_format_secret(NULL, session_hex));
     TEST_ASSERT_FALSE(desk_auth_format_secret(admin, NULL));
     desk_authenticator_init(NULL, admin);
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_INVALID_ARGUMENT,
-        desk_authenticator_login(NULL, NULL, NULL, 0U, NULL));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_INVALID_ARGUMENT,
+                          desk_authenticator_login(NULL, NULL, NULL, 0U, NULL));
     TEST_ASSERT_FALSE(desk_authenticator_validate_session(NULL, NULL, 0U));
     TEST_ASSERT_FALSE(desk_authenticator_logout(NULL, NULL));
 }
@@ -166,9 +159,8 @@ static void duplicate_session_random_is_rejected(void)
     desk_authenticator_t authenticator;
     desk_authenticator_init(&authenticator, admin);
     char session_hex[DESK_AUTH_SECRET_TEXT_SIZE];
-    TEST_ASSERT_EQUAL_INT(
-        DESK_AUTH_LOGIN_OK,
-        desk_authenticator_login(&authenticator, admin_hex, random, 0U, session_hex));
+    TEST_ASSERT_EQUAL_INT(DESK_AUTH_LOGIN_OK, desk_authenticator_login(&authenticator, admin_hex,
+                                                                       random, 0U, session_hex));
     TEST_ASSERT_EQUAL_INT(
         DESK_AUTH_LOGIN_INVALID_RANDOM,
         desk_authenticator_login(&authenticator, admin_hex, random, 1U, session_hex));

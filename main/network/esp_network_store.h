@@ -29,7 +29,6 @@ esp_err_t esp_network_store_init(esp_network_store_t *store);
 esp_err_t esp_network_store_save_wifi(esp_network_store_t *store, const char *ssid,
                                       size_t ssid_length, const char *password,
                                       size_t password_length);
-esp_err_t esp_network_store_save_control_mode(esp_network_store_t *store,
-                                              desk_control_mode_t mode);
+esp_err_t esp_network_store_save_control_mode(esp_network_store_t *store, desk_control_mode_t mode);
 esp_err_t esp_network_store_save_presets(esp_network_store_t *store,
                                          const desk_preset_bank_t *presets);

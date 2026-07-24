@@ -52,10 +52,9 @@ static esp_err_t set_security_headers(httpd_req_t *request)
         result = httpd_resp_set_hdr(request, "X-Frame-Options", "DENY");
     }
     if (result == ESP_OK) {
-        result = httpd_resp_set_hdr(
-            request, "Content-Security-Policy",
-            "default-src 'self'; connect-src 'self' ws:; img-src 'self'; "
-            "style-src 'self'; script-src 'self'; frame-ancestors 'none'");
+        result = httpd_resp_set_hdr(request, "Content-Security-Policy",
+                                    "default-src 'self'; connect-src 'self' ws:; img-src 'self'; "
+                                    "style-src 'self'; script-src 'self'; frame-ancestors 'none'");
     }
     if (result == ESP_OK) {
         result = httpd_resp_set_hdr(request, "Cache-Control", "no-store");
@@ -95,15 +94,13 @@ static esp_err_t send_asset(httpd_req_t *request, const char *content_type,
     if (result == ESP_OK) {
         result = httpd_resp_set_type(request, content_type);
     }
-    return result == ESP_OK
-               ? httpd_resp_send(request, (const char *)start, (ssize_t)(end - start))
-               : result;
+    return result == ESP_OK ? httpd_resp_send(request, (const char *)start, (ssize_t)(end - start))
+                            : result;
 }
 
 static esp_err_t index_handler(httpd_req_t *request)
 {
-    return send_asset(request, "text/html; charset=utf-8", index_html_start,
-                      index_html_end);
+    return send_asset(request, "text/html; charset=utf-8", index_html_start, index_html_end);
 }
 
 static esp_err_t css_handler(httpd_req_t *request)
@@ -113,12 +110,10 @@ static esp_err_t css_handler(httpd_req_t *request)
 
 static esp_err_t javascript_handler(httpd_req_t *request)
 {
-    return send_asset(request, "application/javascript; charset=utf-8", app_js_start,
-                      app_js_end);
+    return send_asset(request, "application/javascript; charset=utf-8", app_js_start, app_js_end);
 }
 
-static bool get_header(httpd_req_t *request, const char *name, char *value,
-                       size_t value_capacity)
+static bool get_header(httpd_req_t *request, const char *name, char *value, size_t value_capacity)
 {
     size_t length = httpd_req_get_hdr_value_len(request, name);
     return length > 0U && length < value_capacity &&
@@ -144,10 +139,8 @@ static bool read_body(httpd_req_t *request, char body[DESK_HTTP_BODY_MAX_SIZE + 
     size_t received = 0U;
     unsigned timeouts = 0U;
     while (received < request->content_len) {
-        int result =
-            httpd_req_recv(request, &body[received], request->content_len - received);
-        if (result == HTTPD_SOCK_ERR_TIMEOUT &&
-            timeouts < DESK_HTTP_RECEIVE_TIMEOUT_LIMIT) {
+        int result = httpd_req_recv(request, &body[received], request->content_len - received);
+        if (result == HTTPD_SOCK_ERR_TIMEOUT && timeouts < DESK_HTTP_RECEIVE_TIMEOUT_LIMIT) {
             ++timeouts;
             continue;
         }
@@ -175,16 +168,14 @@ static bool binary_content_type(httpd_req_t *request)
            strcmp(content_type, "application/octet-stream") == 0;
 }
 
-static bool session_from_request(httpd_req_t *request,
-                                 char session[DESK_AUTH_SECRET_TEXT_SIZE])
+static bool session_from_request(httpd_req_t *request, char session[DESK_AUTH_SECRET_TEXT_SIZE])
 {
     char cookie_header[DESK_HTTP_HEADER_MAX_SIZE];
     if (!get_header(request, "Cookie", cookie_header, sizeof(cookie_header))) {
         return false;
     }
-    return desk_http_extract_cookie(cookie_header, strlen(cookie_header), SESSION_COOKIE,
-                                    session, DESK_AUTH_SECRET_TEXT_SIZE) ==
-           DESK_HTTP_COOKIE_OK;
+    return desk_http_extract_cookie(cookie_header, strlen(cookie_header), SESSION_COOKIE, session,
+                                    DESK_AUTH_SECRET_TEXT_SIZE) == DESK_HTTP_COOKIE_OK;
 }
 
 static bool request_is_authenticated(esp_http_api_t *api, httpd_req_t *request)
@@ -310,8 +301,7 @@ static esp_err_t status_handler(httpd_req_t *request)
 
     desk_app_status_t status;
     desk_runtime_diagnostics_t diagnostics;
-    if (!desk_app_get_runtime_status(&status) ||
-        !desk_app_get_runtime_diagnostics(&diagnostics)) {
+    if (!desk_app_get_runtime_status(&status) || !desk_app_get_runtime_diagnostics(&diagnostics)) {
         return send_error(request, "503 Service Unavailable", "control_unavailable");
     }
 
@@ -337,9 +327,8 @@ static esp_err_t status_handler(httpd_req_t *request)
         "\"upper\":%s,\"lower\":%s,\"direction\":%u,\"duty\":%u,\"enabled\":%s}],"
         "\"diagnostics\":{\"free_heap\":%u,\"minimum_free_heap\":%u,"
         "\"dropped_logs\":%lu,\"control_stack\":%lu,\"logger_stack\":%lu}}",
-        app_description->version, running_partition->label,
-        (unsigned)esp_reset_reason(), state_name(status.outputs.state),
-        error_name(status.outputs.error),
+        app_description->version, running_partition->label, (unsigned)esp_reset_reason(),
+        state_name(status.outputs.state), error_name(status.outputs.error),
         mode_name(status.control_mode), source_name(status.control_source),
         status.remote_control_active ? "true" : "false",
         status.outputs.position_reference_valid ? "true" : "false",
@@ -349,29 +338,23 @@ static esp_err_t status_handler(httpd_req_t *request)
         esp_wifi_service_station_connected(api->wifi) ? "true" : "false",
         status.preset_target_reached ? "true" : "false",
         api->store->preset_storage_fault ? "true" : "false",
-        status.motion_inhibited ? "true" : "false",
-        status.presets.valid[0] ? "true" : "false",
-        (long)status.presets.target_um[0],
-        status.presets.valid[1] ? "true" : "false",
-        (long)status.presets.target_um[1],
-        status.presets.valid[2] ? "true" : "false",
-        (long)status.presets.target_um[2],
-        (long)status.inputs.axis[0].position_um, (long)status.inputs.axis[0].hall_count,
-        status.inputs.axis[0].hall_valid ? "true" : "false",
+        status.motion_inhibited ? "true" : "false", status.presets.valid[0] ? "true" : "false",
+        (long)status.presets.target_um[0], status.presets.valid[1] ? "true" : "false",
+        (long)status.presets.target_um[1], status.presets.valid[2] ? "true" : "false",
+        (long)status.presets.target_um[2], (long)status.inputs.axis[0].position_um,
+        (long)status.inputs.axis[0].hall_count, status.inputs.axis[0].hall_valid ? "true" : "false",
         status.inputs.axis[0].upper_limit_active ? "true" : "false",
         status.inputs.axis[0].lower_limit_active ? "true" : "false",
         (unsigned)status.outputs.motor[0].direction,
         (unsigned)status.outputs.motor[0].duty_permille,
-        status.outputs.motor[0].enable ? "true" : "false",
-        (long)status.inputs.axis[1].position_um, (long)status.inputs.axis[1].hall_count,
-        status.inputs.axis[1].hall_valid ? "true" : "false",
+        status.outputs.motor[0].enable ? "true" : "false", (long)status.inputs.axis[1].position_um,
+        (long)status.inputs.axis[1].hall_count, status.inputs.axis[1].hall_valid ? "true" : "false",
         status.inputs.axis[1].upper_limit_active ? "true" : "false",
         status.inputs.axis[1].lower_limit_active ? "true" : "false",
         (unsigned)status.outputs.motor[1].direction,
         (unsigned)status.outputs.motor[1].duty_permille,
-        status.outputs.motor[1].enable ? "true" : "false",
-        (long)status.inputs.axis[2].position_um, (long)status.inputs.axis[2].hall_count,
-        status.inputs.axis[2].hall_valid ? "true" : "false",
+        status.outputs.motor[1].enable ? "true" : "false", (long)status.inputs.axis[2].position_um,
+        (long)status.inputs.axis[2].hall_count, status.inputs.axis[2].hall_valid ? "true" : "false",
         status.inputs.axis[2].upper_limit_active ? "true" : "false",
         status.inputs.axis[2].lower_limit_active ? "true" : "false",
         (unsigned)status.outputs.motor[2].direction,
@@ -402,8 +385,7 @@ static esp_err_t ota_handler(httpd_req_t *request)
         return send_error(request, "409 Conflict", "desk_must_be_stopped");
     }
     if (!desk_app_queue_motion_inhibit(true) || !wait_for_motion_inhibit()) {
-        return send_error(request, "503 Service Unavailable",
-                          "maintenance_inhibit_failed");
+        return send_error(request, "503 Service Unavailable", "maintenance_inhibit_failed");
     }
 
     esp_ota_update_t update;
@@ -415,8 +397,7 @@ static esp_err_t ota_handler(httpd_req_t *request)
         size_t remaining = request->content_len - received;
         size_t requested = remaining < sizeof(chunk) ? remaining : sizeof(chunk);
         int chunk_size = httpd_req_recv(request, (char *)chunk, requested);
-        if (chunk_size == HTTPD_SOCK_ERR_TIMEOUT &&
-            timeouts < DESK_HTTP_RECEIVE_TIMEOUT_LIMIT) {
+        if (chunk_size == HTTPD_SOCK_ERR_TIMEOUT && timeouts < DESK_HTTP_RECEIVE_TIMEOUT_LIMIT) {
             ++timeouts;
             continue;
         }
@@ -438,8 +419,7 @@ static esp_err_t ota_handler(httpd_req_t *request)
     if (result != ESP_OK) {
         esp_ota_update_abort(&update);
         (void)desk_app_queue_motion_inhibit(false);
-        ESP_LOGE(TAG, "signed firmware update rejected: %s",
-                 esp_err_to_name(result));
+        ESP_LOGE(TAG, "signed firmware update rejected: %s", esp_err_to_name(result));
         return send_error(request, HTTPD_400, "update_rejected");
     }
 
@@ -464,13 +444,11 @@ static esp_err_t diagnostics_handler(httpd_req_t *request)
     if (!desk_app_get_runtime_diagnostic_log(&log, &recovered_storage_fault) ||
         set_security_headers(request) != ESP_OK ||
         httpd_resp_set_type(request, HTTPD_TYPE_JSON) != ESP_OK) {
-        return send_error(request, "503 Service Unavailable",
-                          "diagnostics_unavailable");
+        return send_error(request, "503 Service Unavailable", "diagnostics_unavailable");
     }
 
-    const char *prefix = recovered_storage_fault
-                             ? "{\"storage_fault\":true,\"events\":["
-                             : "{\"storage_fault\":false,\"events\":[";
+    const char *prefix = recovered_storage_fault ? "{\"storage_fault\":true,\"events\":["
+                                                 : "{\"storage_fault\":false,\"events\":[";
     esp_err_t result = httpd_resp_send_chunk(request, prefix, HTTPD_RESP_USE_STRLEN);
     for (size_t offset = 0U; result == ESP_OK && offset < log.count; ++offset) {
         desk_diagnostic_event_t event;
@@ -479,14 +457,13 @@ static esp_err_t diagnostics_handler(httpd_req_t *request)
             result = ESP_ERR_INVALID_STATE;
             break;
         }
-        int written = snprintf(
-            encoded, sizeof(encoded),
-            "%s{\"sequence\":%lu,\"reset_reason\":%lu,\"uptime_s\":%lu,"
-            "\"state\":\"%s\",\"error\":\"%s\"}",
-            offset == 0U ? "" : ",", (unsigned long)event.sequence,
-            (unsigned long)event.reset_reason,
-            (unsigned long)event.uptime_seconds, state_name(event.state),
-            error_name(event.error));
+        int written =
+            snprintf(encoded, sizeof(encoded),
+                     "%s{\"sequence\":%lu,\"reset_reason\":%lu,\"uptime_s\":%lu,"
+                     "\"state\":\"%s\",\"error\":\"%s\"}",
+                     offset == 0U ? "" : ",", (unsigned long)event.sequence,
+                     (unsigned long)event.reset_reason, (unsigned long)event.uptime_seconds,
+                     state_name(event.state), error_name(event.error));
         if (written <= 0 || (size_t)written >= sizeof(encoded)) {
             result = ESP_ERR_INVALID_SIZE;
             break;
@@ -512,8 +489,7 @@ static esp_err_t preset_handler(httpd_req_t *request)
 
     desk_app_status_t status;
     if (!desk_app_get_runtime_status(&status) || !desk_is_stopped(&status) ||
-        status.outputs.state != DESK_STATE_IDLE ||
-        status.outputs.error != DESK_ERROR_NONE) {
+        status.outputs.state != DESK_STATE_IDLE || status.outputs.error != DESK_ERROR_NONE) {
         return send_error(request, "409 Conflict", "desk_must_be_idle");
     }
 
@@ -522,8 +498,8 @@ static esp_err_t preset_handler(httpd_req_t *request)
     char encoded_slot[2];
     size_t slot_length;
     if (!read_body(request, body, &body_length) ||
-        desk_form_get_value(body, body_length, "slot", encoded_slot,
-                            sizeof(encoded_slot), &slot_length) != DESK_FORM_OK ||
+        desk_form_get_value(body, body_length, "slot", encoded_slot, sizeof(encoded_slot),
+                            &slot_length) != DESK_FORM_OK ||
         slot_length != 1U || encoded_slot[0] < '1' || encoded_slot[0] > '3') {
         return send_error(request, HTTPD_400, "invalid_preset_slot");
     }
@@ -532,17 +508,14 @@ static esp_err_t preset_handler(httpd_req_t *request)
     if (!desk_preset_bank_capture(&updated, slot, &status.inputs,
                                   status.outputs.position_reference_valid,
                                   status.outputs.feedback_warning,
-                                  (int32_t)BOARD_ACTUATOR_TRAVEL_UM,
-                                  BOARD_HALL_STOP_UM)) {
+                                  (int32_t)BOARD_ACTUATOR_TRAVEL_UM, BOARD_HALL_STOP_UM)) {
         return send_error(request, "409 Conflict", "preset_capture_unsafe");
     }
 
     desk_preset_bank_t previous = api->store->presets;
     esp_err_t result = esp_network_store_save_presets(api->store, &updated);
-    if (result != ESP_OK ||
-        !desk_app_queue_preset_target(slot, updated.target_um[slot])) {
-        if (result == ESP_OK &&
-            esp_network_store_save_presets(api->store, &previous) != ESP_OK) {
+    if (result != ESP_OK || !desk_app_queue_preset_target(slot, updated.target_um[slot])) {
+        if (result == ESP_OK && esp_network_store_save_presets(api->store, &previous) != ESP_OK) {
             ESP_LOGE(TAG, "preset rollback failed");
         }
         return send_error(request, "503 Service Unavailable", "preset_apply_failed");
@@ -562,8 +535,8 @@ static esp_err_t login_handler(httpd_req_t *request)
     char token[DESK_AUTH_SECRET_TEXT_SIZE];
     size_t token_length;
     if (!read_body(request, body, &body_length) ||
-        desk_form_get_value(body, body_length, "token", token, sizeof(token),
-                            &token_length) != DESK_FORM_OK ||
+        desk_form_get_value(body, body_length, "token", token, sizeof(token), &token_length) !=
+            DESK_FORM_OK ||
         token_length != DESK_AUTH_SECRET_HEX_LENGTH) {
         return send_error(request, HTTPD_400, "invalid_credentials");
     }
@@ -571,11 +544,11 @@ static esp_err_t login_handler(httpd_req_t *request)
     uint8_t random[DESK_AUTH_SECRET_BYTES];
     char session[DESK_AUTH_SECRET_TEXT_SIZE];
     desk_auth_login_result_t login_result = DESK_AUTH_LOGIN_INVALID_RANDOM;
-    for (unsigned attempt = 0U;
-         attempt < 4U && login_result == DESK_AUTH_LOGIN_INVALID_RANDOM; ++attempt) {
+    for (unsigned attempt = 0U; attempt < 4U && login_result == DESK_AUTH_LOGIN_INVALID_RANDOM;
+         ++attempt) {
         esp_fill_random(random, sizeof(random));
-        login_result = desk_authenticator_login(&api->authenticator, token, random, now_ms(),
-                                                session);
+        login_result =
+            desk_authenticator_login(&api->authenticator, token, random, now_ms(), session);
     }
     if (login_result == DESK_AUTH_LOGIN_RATE_LIMITED) {
         return send_error(request, "429 Too Many Requests", "rate_limited");
@@ -589,8 +562,7 @@ static esp_err_t login_handler(httpd_req_t *request)
 
     char cookie[128];
     int written =
-        snprintf(cookie, sizeof(cookie),
-                 "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800",
+        snprintf(cookie, sizeof(cookie), "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800",
                  SESSION_COOKIE, session);
     if (written <= 0 || (size_t)written >= sizeof(cookie) ||
         set_security_headers(request) != ESP_OK ||
@@ -609,9 +581,8 @@ static esp_err_t logout_handler(httpd_req_t *request)
         !desk_authenticator_logout(&api->authenticator, session)) {
         return send_error(request, "401 Unauthorized", "authentication_required");
     }
-    if (httpd_resp_set_hdr(
-            request, "Set-Cookie",
-            "desk_session=expired; Path=/; HttpOnly; SameSite=Strict; Max-Age=0") !=
+    if (httpd_resp_set_hdr(request, "Set-Cookie",
+                           "desk_session=expired; Path=/; HttpOnly; SameSite=Strict; Max-Age=0") !=
         ESP_OK) {
         return ESP_FAIL;
     }
@@ -622,8 +593,7 @@ static esp_err_t provisioning_handler(httpd_req_t *request)
 {
     esp_http_api_t *api = request->user_ctx;
     if (!same_origin(request) || !request_is_authenticated(api, request) ||
-        !esp_wifi_service_provisioning_active(api->wifi) ||
-        !form_content_type(request)) {
+        !esp_wifi_service_provisioning_active(api->wifi) || !form_content_type(request)) {
         return send_error(request, "403 Forbidden", "provisioning_forbidden");
     }
 
@@ -639,17 +609,16 @@ static esp_err_t provisioning_handler(httpd_req_t *request)
     size_t ssid_length;
     size_t password_length;
     if (!read_body(request, body, &body_length) ||
-        desk_form_get_value(body, body_length, "ssid", ssid, sizeof(ssid),
-                            &ssid_length) != DESK_FORM_OK ||
+        desk_form_get_value(body, body_length, "ssid", ssid, sizeof(ssid), &ssid_length) !=
+            DESK_FORM_OK ||
         desk_form_get_value(body, body_length, "password", password, sizeof(password),
                             &password_length) != DESK_FORM_OK ||
-        !desk_network_credentials_are_valid(ssid, ssid_length, password,
-                                            password_length)) {
+        !desk_network_credentials_are_valid(ssid, ssid_length, password, password_length)) {
         return send_error(request, HTTPD_400, "invalid_network");
     }
 
-    esp_err_t result = esp_network_store_save_wifi(
-        api->store, ssid, ssid_length, password, password_length);
+    esp_err_t result =
+        esp_network_store_save_wifi(api->store, ssid, ssid_length, password, password_length);
     if (result == ESP_OK) {
         result = esp_wifi_service_apply_credentials(api->wifi);
     }
@@ -695,8 +664,8 @@ static esp_err_t mode_handler(httpd_req_t *request)
     size_t mode_length;
     desk_control_mode_t mode;
     if (!read_body(request, body, &body_length) ||
-        desk_form_get_value(body, body_length, "mode", encoded_mode,
-                            sizeof(encoded_mode), &mode_length) != DESK_FORM_OK ||
+        desk_form_get_value(body, body_length, "mode", encoded_mode, sizeof(encoded_mode),
+                            &mode_length) != DESK_FORM_OK ||
         mode_length == 0U || !parse_control_mode(encoded_mode, &mode)) {
         return send_error(request, HTTPD_400, "invalid_mode");
     }
@@ -750,8 +719,7 @@ static esp_err_t websocket_handler(httpd_req_t *request)
     if (request->method == HTTP_GET) {
         return ESP_OK;
     }
-    if (httpd_req_to_sockfd(request) != api->websocket_fd ||
-        api->websocket_lease_id == 0U) {
+    if (httpd_req_to_sockfd(request) != api->websocket_fd || api->websocket_lease_id == 0U) {
         return ESP_FAIL;
     }
 
@@ -769,8 +737,7 @@ static esp_err_t websocket_handler(httpd_req_t *request)
     }
 
     desk_remote_command_t command;
-    if (desk_control_protocol_parse_command(payload, frame.len,
-                                            api->websocket_lease_id,
+    if (desk_control_protocol_parse_command(payload, frame.len, api->websocket_lease_id,
                                             &command) != DESK_PROTOCOL_PARSE_OK ||
         !desk_app_queue_remote_command(&command)) {
         return ESP_FAIL;
@@ -798,8 +765,7 @@ static esp_err_t register_handler(httpd_handle_t server, const httpd_uri_t *hand
 {
     esp_err_t result = httpd_register_uri_handler(server, handler);
     if (result != ESP_OK) {
-        ESP_LOGE(TAG, "failed to register %s: %s", handler->uri,
-                 esp_err_to_name(result));
+        ESP_LOGE(TAG, "failed to register %s: %s", handler->uri, esp_err_to_name(result));
     }
     return result;
 }
@@ -807,8 +773,7 @@ static esp_err_t register_handler(httpd_handle_t server, const httpd_uri_t *hand
 esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
                              esp_wifi_service_t *wifi)
 {
-    if (api == NULL || store == NULL || !store->initialized || wifi == NULL ||
-        !wifi->initialized) {
+    if (api == NULL || store == NULL || !store->initialized || wifi == NULL || !wifi->initialized) {
         return ESP_ERR_INVALID_ARG;
     }
     *api = (esp_http_api_t){
@@ -837,26 +802,14 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
 
     const httpd_uri_t handlers[] = {
         {.uri = "/", .method = HTTP_GET, .handler = index_handler, .user_ctx = api},
-        {.uri = "/app.css",
-         .method = HTTP_GET,
-         .handler = css_handler,
-         .user_ctx = api},
-        {.uri = "/app.js",
-         .method = HTTP_GET,
-         .handler = javascript_handler,
-         .user_ctx = api},
-        {.uri = "/api/v1/status",
-         .method = HTTP_GET,
-         .handler = status_handler,
-         .user_ctx = api},
+        {.uri = "/app.css", .method = HTTP_GET, .handler = css_handler, .user_ctx = api},
+        {.uri = "/app.js", .method = HTTP_GET, .handler = javascript_handler, .user_ctx = api},
+        {.uri = "/api/v1/status", .method = HTTP_GET, .handler = status_handler, .user_ctx = api},
         {.uri = "/api/v1/diagnostics",
          .method = HTTP_GET,
          .handler = diagnostics_handler,
          .user_ctx = api},
-        {.uri = "/api/v1/session",
-         .method = HTTP_POST,
-         .handler = login_handler,
-         .user_ctx = api},
+        {.uri = "/api/v1/session", .method = HTTP_POST, .handler = login_handler, .user_ctx = api},
         {.uri = "/api/v1/session",
          .method = HTTP_DELETE,
          .handler = logout_handler,
@@ -865,18 +818,9 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
          .method = HTTP_POST,
          .handler = provisioning_handler,
          .user_ctx = api},
-        {.uri = "/api/v1/mode",
-         .method = HTTP_POST,
-         .handler = mode_handler,
-         .user_ctx = api},
-        {.uri = "/api/v1/preset",
-         .method = HTTP_POST,
-         .handler = preset_handler,
-         .user_ctx = api},
-        {.uri = "/api/v1/update",
-         .method = HTTP_POST,
-         .handler = ota_handler,
-         .user_ctx = api},
+        {.uri = "/api/v1/mode", .method = HTTP_POST, .handler = mode_handler, .user_ctx = api},
+        {.uri = "/api/v1/preset", .method = HTTP_POST, .handler = preset_handler, .user_ctx = api},
+        {.uri = "/api/v1/update", .method = HTTP_POST, .handler = ota_handler, .user_ctx = api},
         {.uri = "/api/v1/control",
          .method = HTTP_GET,
          .handler = websocket_handler,

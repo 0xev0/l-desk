@@ -12,8 +12,8 @@ void desk_preset_controller_reset(desk_preset_controller_t *controller)
 bool desk_preset_bank_set(desk_preset_bank_t *bank, size_t slot, int32_t target_um,
                           int32_t maximum_travel_um)
 {
-    if (bank == NULL || slot >= DESK_PRESET_COUNT || maximum_travel_um <= 0 ||
-        target_um < 0 || target_um > maximum_travel_um) {
+    if (bank == NULL || slot >= DESK_PRESET_COUNT || maximum_travel_um <= 0 || target_um < 0 ||
+        target_um > maximum_travel_um) {
         return false;
     }
     bank->target_um[slot] = target_um;
@@ -23,8 +23,7 @@ bool desk_preset_bank_set(desk_preset_bank_t *bank, size_t slot, int32_t target_
 
 bool desk_preset_bank_get(const desk_preset_bank_t *bank, size_t slot, int32_t *target_um)
 {
-    if (bank == NULL || slot >= DESK_PRESET_COUNT || target_um == NULL ||
-        !bank->valid[slot]) {
+    if (bank == NULL || slot >= DESK_PRESET_COUNT || target_um == NULL || !bank->valid[slot]) {
         return false;
     }
     *target_um = bank->target_um[slot];
@@ -44,14 +43,12 @@ static bool average_position(const desk_inputs_t *inputs, int32_t *average_um)
     return true;
 }
 
-bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot,
-                              const desk_inputs_t *inputs, bool position_reference_valid,
-                              bool feedback_warning, int32_t maximum_travel_um,
-                              int32_t maximum_skew_um)
+bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot, const desk_inputs_t *inputs,
+                              bool position_reference_valid, bool feedback_warning,
+                              int32_t maximum_travel_um, int32_t maximum_skew_um)
 {
-    if (bank == NULL || inputs == NULL || slot >= DESK_PRESET_COUNT ||
-        !position_reference_valid || feedback_warning || maximum_travel_um <= 0 ||
-        maximum_skew_um < 0) {
+    if (bank == NULL || inputs == NULL || slot >= DESK_PRESET_COUNT || !position_reference_valid ||
+        feedback_warning || maximum_travel_um <= 0 || maximum_skew_um < 0) {
         return false;
     }
 
@@ -59,8 +56,7 @@ bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot,
     int32_t maximum = 0;
     for (size_t axis = 0U; axis < DESK_AXIS_COUNT; ++axis) {
         int32_t position = inputs->axis[axis].position_um;
-        if (!inputs->axis[axis].hall_valid || position < 0 ||
-            position > maximum_travel_um) {
+        if (!inputs->axis[axis].hall_valid || position < 0 || position > maximum_travel_um) {
             return false;
         }
         if (position < minimum) {
@@ -79,8 +75,7 @@ bool desk_preset_bank_capture(desk_preset_bank_t *bank, size_t slot,
            desk_preset_bank_set(bank, slot, average_um, maximum_travel_um);
 }
 
-static bool target_has_been_reached(const desk_preset_controller_t *controller,
-                                    int32_t current_um)
+static bool target_has_been_reached(const desk_preset_controller_t *controller, int32_t current_um)
 {
     if (controller->direction == MOTOR_COMMAND_UP) {
         return current_um >= controller->target_um - DESK_PRESET_POSITION_TOLERANCE_UM;
@@ -91,9 +86,10 @@ static bool target_has_been_reached(const desk_preset_controller_t *controller,
     return true;
 }
 
-bool desk_preset_controller_update(
-    desk_preset_controller_t *controller, const desk_preset_bank_t *bank, size_t slot,
-    const desk_inputs_t *inputs, bool position_reference_valid, motor_command_t *direction)
+bool desk_preset_controller_update(desk_preset_controller_t *controller,
+                                   const desk_preset_bank_t *bank, size_t slot,
+                                   const desk_inputs_t *inputs, bool position_reference_valid,
+                                   motor_command_t *direction)
 {
     if (controller == NULL || bank == NULL || inputs == NULL || direction == NULL ||
         !position_reference_valid || slot >= DESK_PRESET_COUNT) {
@@ -102,8 +98,7 @@ bool desk_preset_controller_update(
 
     int32_t target_um;
     int32_t current_um;
-    if (!desk_preset_bank_get(bank, slot, &target_um) ||
-        !average_position(inputs, &current_um)) {
+    if (!desk_preset_bank_get(bank, slot, &target_um) || !average_position(inputs, &current_um)) {
         return false;
     }
 
@@ -122,11 +117,9 @@ bool desk_preset_controller_update(
         }
     }
 
-    if (!controller->target_reached &&
-        target_has_been_reached(controller, current_um)) {
+    if (!controller->target_reached && target_has_been_reached(controller, current_um)) {
         controller->target_reached = true;
     }
-    *direction =
-        controller->target_reached ? MOTOR_COMMAND_STOP : controller->direction;
+    *direction = controller->target_reached ? MOTOR_COMMAND_STOP : controller->direction;
     return true;
 }

@@ -70,23 +70,18 @@
 
 _Static_assert(BOARD_ACTUATOR_TRAVEL_UM <= INT32_MAX,
                "actuator travel must fit the domain position type");
-_Static_assert(AXIS_FRONT_LEFT_COUNTS_PER_TRAVEL > 0U &&
-                   AXIS_FRONT_RIGHT_COUNTS_PER_TRAVEL > 0U &&
+_Static_assert(AXIS_FRONT_LEFT_COUNTS_PER_TRAVEL > 0U && AXIS_FRONT_RIGHT_COUNTS_PER_TRAVEL > 0U &&
                    AXIS_WING_COUNTS_PER_TRAVEL > 0U,
                "every Hall scale must be nonzero");
-_Static_assert(BOARD_HALL_WARNING_UM > 0 &&
-                   BOARD_HALL_WARNING_UM < BOARD_HALL_STOP_UM,
+_Static_assert(BOARD_HALL_WARNING_UM > 0 && BOARD_HALL_WARNING_UM < BOARD_HALL_STOP_UM,
                "Hall warning must precede the hard skew stop");
 _Static_assert(BOARD_MOTOR_START_DUTY_PERMILLE > 0U &&
-                   BOARD_MOTOR_START_DUTY_PERMILLE <=
-                       BOARD_MOTOR_MAX_DUTY_PERMILLE &&
+                   BOARD_MOTOR_START_DUTY_PERMILLE <= BOARD_MOTOR_MAX_DUTY_PERMILLE &&
                    BOARD_MOTOR_MAX_DUTY_PERMILLE <= 1000U,
                "motor duty configuration is invalid");
-_Static_assert(BOARD_SYNCHRONIZATION_TRIM_PERMILLE <
-                   BOARD_MOTOR_MAX_DUTY_PERMILLE,
+_Static_assert(BOARD_SYNCHRONIZATION_TRIM_PERMILLE < BOARD_MOTOR_MAX_DUTY_PERMILLE,
                "synchronization trim must leave positive motor duty");
-_Static_assert(BOARD_LOG_QUEUE_DEPTH > 0U &&
-                   BOARD_CONTROL_REQUEST_QUEUE_DEPTH > 0U,
+_Static_assert(BOARD_LOG_QUEUE_DEPTH > 0U && BOARD_CONTROL_REQUEST_QUEUE_DEPTH > 0U,
                "runtime queues must have bounded nonzero capacity");
 
 esp_err_t board_config_validate_pins(void);

@@ -73,8 +73,7 @@ static esp_err_t load_wifi_credentials(esp_network_store_t *store)
 {
     desk_network_wifi_record_t record = {0};
     size_t record_size = sizeof(record);
-    esp_err_t result =
-        nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_WIFI, &record, &record_size);
+    esp_err_t result = nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_WIFI, &record, &record_size);
     if (result == ESP_ERR_NVS_NOT_FOUND) {
         store->has_wifi_credentials = false;
         return ESP_OK;
@@ -106,8 +105,7 @@ static esp_err_t load_control_mode(esp_network_store_t *store)
         store->control_mode = DESK_CONTROL_MODE_HYBRID;
         return ESP_OK;
     }
-    if (result != ESP_OK ||
-        !desk_network_control_mode_is_valid((desk_control_mode_t)stored_mode)) {
+    if (result != ESP_OK || !desk_network_control_mode_is_valid((desk_control_mode_t)stored_mode)) {
         return result == ESP_OK ? ESP_ERR_INVALID_STATE : result;
     }
     store->control_mode = (desk_control_mode_t)stored_mode;
@@ -117,8 +115,7 @@ static esp_err_t load_control_mode(esp_network_store_t *store)
 static esp_err_t load_presets(esp_network_store_t *store)
 {
     size_t record_size = 0U;
-    esp_err_t result =
-        nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_PRESETS, NULL, &record_size);
+    esp_err_t result = nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_PRESETS, NULL, &record_size);
     if (result == ESP_ERR_NVS_NOT_FOUND) {
         return ESP_OK;
     }
@@ -131,13 +128,11 @@ static esp_err_t load_presets(esp_network_store_t *store)
     }
 
     uint8_t record[DESK_PRESET_RECORD_SIZE];
-    result = nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_PRESETS, record,
-                          &record_size);
+    result = nvs_get_blob(store->nvs, DESK_NETWORK_NVS_KEY_PRESETS, record, &record_size);
     if (result != ESP_OK) {
         return result;
     }
-    if (!desk_preset_record_decode(record, record_size,
-                                   (int32_t)BOARD_ACTUATOR_TRAVEL_UM,
+    if (!desk_preset_record_decode(record, record_size, (int32_t)BOARD_ACTUATOR_TRAVEL_UM,
                                    &store->presets)) {
         store->presets = (desk_preset_bank_t){0};
         store->preset_storage_fault = true;
@@ -199,8 +194,7 @@ esp_err_t esp_network_store_save_wifi(esp_network_store_t *store, const char *ss
     memcpy(record.ssid, ssid, ssid_length);
     memcpy(record.password, password, password_length);
 
-    esp_err_t result =
-        nvs_set_blob(store->nvs, DESK_NETWORK_NVS_KEY_WIFI, &record, sizeof(record));
+    esp_err_t result = nvs_set_blob(store->nvs, DESK_NETWORK_NVS_KEY_WIFI, &record, sizeof(record));
     if (result == ESP_OK) {
         result = nvs_commit(store->nvs);
     }
@@ -217,8 +211,7 @@ esp_err_t esp_network_store_save_presets(esp_network_store_t *store,
 {
     uint8_t record[DESK_PRESET_RECORD_SIZE];
     if (store == NULL || !store->initialized ||
-        !desk_preset_record_encode(presets, (int32_t)BOARD_ACTUATOR_TRAVEL_UM,
-                                   record)) {
+        !desk_preset_record_encode(presets, (int32_t)BOARD_ACTUATOR_TRAVEL_UM, record)) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -234,8 +227,7 @@ esp_err_t esp_network_store_save_presets(esp_network_store_t *store,
     return result;
 }
 
-esp_err_t esp_network_store_save_control_mode(esp_network_store_t *store,
-                                              desk_control_mode_t mode)
+esp_err_t esp_network_store_save_control_mode(esp_network_store_t *store, desk_control_mode_t mode)
 {
     if (store == NULL || !store->initialized || !desk_network_control_mode_is_valid(mode)) {
         return ESP_ERR_INVALID_ARG;

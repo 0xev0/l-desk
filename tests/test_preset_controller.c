@@ -38,17 +38,17 @@ static void upward_preset_stops_and_latches_after_crossing(void)
     desk_preset_controller_t controller = {0};
     desk_inputs_t inputs = positioned_inputs(100000);
     motor_command_t direction;
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_UP, direction);
 
     inputs = positioned_inputs(199000);
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, direction);
     inputs = positioned_inputs(190000);
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, direction);
 }
 
@@ -59,16 +59,16 @@ static void downward_preset_never_reverses_after_crossing(void)
     desk_preset_controller_t controller = {0};
     desk_inputs_t inputs = positioned_inputs(300000);
     motor_command_t direction;
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 2U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 2U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, direction);
     inputs = positioned_inputs(149000);
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 2U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 2U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, direction);
     inputs = positioned_inputs(180000);
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 2U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 2U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_STOP, direction);
 }
 
@@ -79,24 +79,23 @@ static void invalid_reference_feedback_and_arguments_fail_stopped(void)
     desk_preset_controller_t controller = {0};
     desk_inputs_t inputs = positioned_inputs(0);
     motor_command_t direction = MOTOR_COMMAND_UP;
-    TEST_ASSERT_FALSE(desk_preset_controller_update(NULL, &bank, 0U, &inputs, true,
-                                                    &direction));
-    TEST_ASSERT_FALSE(desk_preset_controller_update(&controller, NULL, 0U, &inputs, true,
-                                                    &direction));
-    TEST_ASSERT_FALSE(desk_preset_controller_update(&controller, &bank, 0U, NULL, true,
-                                                    &direction));
-    TEST_ASSERT_FALSE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, false,
-                                                    &direction));
+    TEST_ASSERT_FALSE(desk_preset_controller_update(NULL, &bank, 0U, &inputs, true, &direction));
+    TEST_ASSERT_FALSE(
+        desk_preset_controller_update(&controller, NULL, 0U, &inputs, true, &direction));
+    TEST_ASSERT_FALSE(
+        desk_preset_controller_update(&controller, &bank, 0U, NULL, true, &direction));
+    TEST_ASSERT_FALSE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, false, &direction));
     inputs.axis[1].hall_valid = false;
-    TEST_ASSERT_FALSE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, true,
-                                                    &direction));
+    TEST_ASSERT_FALSE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, true, &direction));
     desk_preset_controller_reset(&controller);
     TEST_ASSERT_FALSE(controller.active);
     desk_preset_controller_reset(NULL);
 
     inputs = positioned_inputs(INT32_MAX);
-    TEST_ASSERT_TRUE(desk_preset_controller_update(&controller, &bank, 0U, &inputs, true,
-                                                   &direction));
+    TEST_ASSERT_TRUE(
+        desk_preset_controller_update(&controller, &bank, 0U, &inputs, true, &direction));
     TEST_ASSERT_EQUAL_INT(MOTOR_COMMAND_DOWN, direction);
 }
 
@@ -106,38 +105,27 @@ static void preset_capture_requires_safe_coherent_feedback(void)
     desk_inputs_t inputs = positioned_inputs(200000);
     inputs.axis[0].position_um = 198000;
     inputs.axis[2].position_um = 202000;
-    TEST_ASSERT_TRUE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                              500000, 5000));
+    TEST_ASSERT_TRUE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, 5000));
     TEST_ASSERT_EQUAL_INT(200000, bank.target_um[1]);
 
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(NULL, 1U, &inputs, true, false,
-                                               500000, 5000));
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, DESK_PRESET_COUNT, &inputs,
-                                               true, false, 500000, 5000));
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, NULL, true, false,
-                                               500000, 5000));
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, false, false,
-                                               500000, 5000));
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, true,
-                                               500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(NULL, 1U, &inputs, true, false, 500000, 5000));
+    TEST_ASSERT_FALSE(
+        desk_preset_bank_capture(&bank, DESK_PRESET_COUNT, &inputs, true, false, 500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, NULL, true, false, 500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, false, false, 500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, true, 500000, 5000));
     inputs.axis[2].position_um = 204001;
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, 5000));
     inputs = positioned_inputs(200000);
     inputs.axis[0].hall_valid = false;
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, 5000));
     inputs = positioned_inputs(-1);
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, 5000));
     inputs = positioned_inputs(500001);
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               500000, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, 5000));
     inputs = positioned_inputs(200000);
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               0, 5000));
-    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false,
-                                               500000, -1));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 0, 5000));
+    TEST_ASSERT_FALSE(desk_preset_bank_capture(&bank, 1U, &inputs, true, false, 500000, -1));
 }
 
 int main(void)

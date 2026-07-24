@@ -14,11 +14,9 @@ static esp_err_t start_provisioning(esp_wifi_service_t *service)
 {
     esp_err_t result = esp_wifi_set_mode(WIFI_MODE_APSTA);
     if (result == ESP_OK) {
-        atomic_store_explicit(&service->provisioning_active, true,
-                              memory_order_release);
+        atomic_store_explicit(&service->provisioning_active, true, memory_order_release);
         ESP_LOGW(TAG, "provisioning AP active: SSID=%s", service->provisioning_ssid);
-        ESP_LOGW(TAG, "provisioning password: %s",
-                 service->store->provisioning_ap_password);
+        ESP_LOGW(TAG, "provisioning password: %s", service->store->provisioning_ap_password);
         char admin_secret[DESK_AUTH_SECRET_TEXT_SIZE];
         if (desk_auth_format_secret(service->store->admin_secret, admin_secret)) {
             ESP_LOGW(TAG, "device administration token: %s", admin_secret);
@@ -37,8 +35,7 @@ static void wifi_event_handler(void *argument, esp_event_base_t event_base, int3
     }
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START &&
-        atomic_load_explicit(&service->credentials_available,
-                             memory_order_acquire)) {
+        atomic_load_explicit(&service->credentials_available, memory_order_acquire)) {
         esp_err_t result = esp_wifi_connect();
         if (result != ESP_OK) {
             ESP_LOGE(TAG, "initial station connect failed: %s", esp_err_to_name(result));
@@ -46,22 +43,17 @@ static void wifi_event_handler(void *argument, esp_event_base_t event_base, int3
         return;
     }
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED &&
-        atomic_load_explicit(&service->credentials_available,
-                             memory_order_acquire)) {
-        atomic_store_explicit(&service->station_connected, false,
-                              memory_order_release);
-        uint8_t retries = atomic_load_explicit(&service->connect_retries,
-                                               memory_order_relaxed);
+        atomic_load_explicit(&service->credentials_available, memory_order_acquire)) {
+        atomic_store_explicit(&service->station_connected, false, memory_order_release);
+        uint8_t retries = atomic_load_explicit(&service->connect_retries, memory_order_relaxed);
         if (retries < DESK_WIFI_MAX_CONNECT_RETRIES) {
-            atomic_store_explicit(&service->connect_retries,
-                                  (uint8_t)(retries + 1U),
+            atomic_store_explicit(&service->connect_retries, (uint8_t)(retries + 1U),
                                   memory_order_relaxed);
             esp_err_t result = esp_wifi_connect();
             if (result != ESP_OK) {
                 ESP_LOGE(TAG, "station reconnect failed: %s", esp_err_to_name(result));
             }
-        } else if (!atomic_load_explicit(&service->provisioning_active,
-                                         memory_order_acquire)) {
+        } else if (!atomic_load_explicit(&service->provisioning_active, memory_order_acquire)) {
             esp_err_t result = start_provisioning(service);
             if (result != ESP_OK) {
                 ESP_LOGE(TAG, "provisioning fallback failed: %s", esp_err_to_name(result));
@@ -70,16 +62,12 @@ static void wifi_event_handler(void *argument, esp_event_base_t event_base, int3
         return;
     }
     if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        atomic_store_explicit(&service->station_connected, true,
-                              memory_order_release);
-        atomic_store_explicit(&service->connect_retries, 0U,
-                              memory_order_relaxed);
-        if (atomic_load_explicit(&service->provisioning_active,
-                                 memory_order_acquire)) {
+        atomic_store_explicit(&service->station_connected, true, memory_order_release);
+        atomic_store_explicit(&service->connect_retries, 0U, memory_order_relaxed);
+        if (atomic_load_explicit(&service->provisioning_active, memory_order_acquire)) {
             esp_err_t result = esp_wifi_set_mode(WIFI_MODE_STA);
             if (result == ESP_OK) {
-                atomic_store_explicit(&service->provisioning_active, false,
-                                      memory_order_release);
+                atomic_store_explicit(&service->provisioning_active, false, memory_order_release);
             } else {
                 ESP_LOGE(TAG, "failed to disable fallback AP: %s", esp_err_to_name(result));
             }
@@ -174,14 +162,13 @@ esp_err_t esp_wifi_service_init(esp_wifi_service_t *service, esp_network_store_t
         result = esp_wifi_set_storage(WIFI_STORAGE_RAM);
     }
     if (result == ESP_OK) {
-        result = esp_event_handler_instance_register(
-            WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, service,
-            &service->wifi_event_handler);
+        result =
+            esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler,
+                                                service, &service->wifi_event_handler);
     }
     if (result == ESP_OK) {
         result = esp_event_handler_instance_register(
-            IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, service,
-            &service->ip_event_handler);
+            IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, service, &service->ip_event_handler);
     }
     if (result == ESP_OK) {
         result = configure_access_point(service);
@@ -190,11 +177,10 @@ esp_err_t esp_wifi_service_init(esp_wifi_service_t *service, esp_network_store_t
         result = configure_station(store);
     }
     if (result == ESP_OK) {
-        wifi_mode_t mode =
-            store->has_wifi_credentials ? WIFI_MODE_STA : WIFI_MODE_AP;
+        wifi_mode_t mode = store->has_wifi_credentials ? WIFI_MODE_STA : WIFI_MODE_AP;
         result = esp_wifi_set_mode(mode);
-        atomic_store_explicit(&service->provisioning_active,
-                              mode == WIFI_MODE_AP, memory_order_release);
+        atomic_store_explicit(&service->provisioning_active, mode == WIFI_MODE_AP,
+                              memory_order_release);
     }
     if (result == ESP_OK) {
         result = esp_wifi_set_ps(WIFI_PS_NONE);
@@ -223,19 +209,15 @@ esp_err_t esp_wifi_service_apply_credentials(esp_wifi_service_t *service)
         result = configure_station(service->store);
     }
     if (result == ESP_OK) {
-        atomic_store_explicit(&service->credentials_available, true,
-                              memory_order_release);
+        atomic_store_explicit(&service->credentials_available, true, memory_order_release);
         result = esp_wifi_set_mode(WIFI_MODE_APSTA);
     }
     if (result == ESP_OK) {
-        atomic_store_explicit(&service->provisioning_active, true,
-                              memory_order_release);
-        atomic_store_explicit(&service->connect_retries, 0U,
-                              memory_order_relaxed);
+        atomic_store_explicit(&service->provisioning_active, true, memory_order_release);
+        atomic_store_explicit(&service->connect_retries, 0U, memory_order_relaxed);
         if (current_mode == WIFI_MODE_APSTA || current_mode == WIFI_MODE_STA) {
             esp_err_t disconnect_result = esp_wifi_disconnect();
-            if (disconnect_result != ESP_OK &&
-                disconnect_result != ESP_ERR_WIFI_NOT_CONNECT) {
+            if (disconnect_result != ESP_OK && disconnect_result != ESP_ERR_WIFI_NOT_CONNECT) {
                 return disconnect_result;
             }
             result = esp_wifi_connect();
@@ -247,13 +229,11 @@ esp_err_t esp_wifi_service_apply_credentials(esp_wifi_service_t *service)
 bool esp_wifi_service_station_connected(const esp_wifi_service_t *service)
 {
     return service != NULL &&
-           atomic_load_explicit(&service->station_connected,
-                                memory_order_acquire);
+           atomic_load_explicit(&service->station_connected, memory_order_acquire);
 }
 
 bool esp_wifi_service_provisioning_active(const esp_wifi_service_t *service)
 {
     return service != NULL &&
-           atomic_load_explicit(&service->provisioning_active,
-                                memory_order_acquire);
+           atomic_load_explicit(&service->provisioning_active, memory_order_acquire);
 }

@@ -15,7 +15,6 @@ typedef struct {
 } esp_diagnostic_store_t;
 
 esp_err_t esp_diagnostic_store_init(esp_diagnostic_store_t *store);
-esp_err_t esp_diagnostic_store_append(esp_diagnostic_store_t *store,
-                                      uint32_t reset_reason,
-                                      uint32_t uptime_seconds,
-                                      desk_state_t state, desk_error_t error);
+esp_err_t esp_diagnostic_store_append(esp_diagnostic_store_t *store, uint32_t reset_reason,
+                                      uint32_t uptime_seconds, desk_state_t state,
+                                      desk_error_t error);

@@ -26,8 +26,8 @@ static bool append_stop(bts7960_sequence_t *sequence)
            append_operation(sequence, BTS7960_OPERATION_SET_LPWM, 0U);
 }
 
-bool bts7960_sequence_build(motor_command_t applied_direction,
-                            const desk_axis_output_t *command, bts7960_sequence_t *sequence)
+bool bts7960_sequence_build(motor_command_t applied_direction, const desk_axis_output_t *command,
+                            bts7960_sequence_t *sequence)
 {
     if (sequence == NULL || !motor_axis_command_is_valid(command)) {
         return false;
@@ -55,20 +55,18 @@ bool bts7960_sequence_build(motor_command_t applied_direction,
            append_operation(sequence, BTS7960_OPERATION_SET_ENABLE, 1U);
 }
 
-bool bts7960_snapshot_matches(const desk_axis_output_t *command,
-                              const bts7960_snapshot_t *snapshot, uint32_t maximum_pwm_duty)
+bool bts7960_snapshot_matches(const desk_axis_output_t *command, const bts7960_snapshot_t *snapshot,
+                              uint32_t maximum_pwm_duty)
 {
     if (!motor_axis_command_is_valid(command) || snapshot == NULL || maximum_pwm_duty == 0U) {
         return false;
     }
 
     if (command->direction == MOTOR_COMMAND_STOP) {
-        return !snapshot->enable_active && snapshot->rpwm_duty == 0U &&
-               snapshot->lpwm_duty == 0U;
+        return !snapshot->enable_active && snapshot->rpwm_duty == 0U && snapshot->lpwm_duty == 0U;
     }
 
-    uint32_t expected_duty =
-        ((uint32_t)command->duty_permille * maximum_pwm_duty) / 1000U;
+    uint32_t expected_duty = ((uint32_t)command->duty_permille * maximum_pwm_duty) / 1000U;
     if (command->direction == MOTOR_COMMAND_UP) {
         return snapshot->enable_active && snapshot->rpwm_duty == expected_duty &&
                snapshot->lpwm_duty == 0U;

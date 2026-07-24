@@ -18,9 +18,9 @@ static bool has_control_character(const char *text, size_t length)
     return false;
 }
 
-desk_http_cookie_result_t desk_http_extract_cookie(
-    const char *header, size_t header_length, const char *name, char *value,
-    size_t value_capacity)
+desk_http_cookie_result_t desk_http_extract_cookie(const char *header, size_t header_length,
+                                                   const char *name, char *value,
+                                                   size_t value_capacity)
 {
     if (header == NULL || name == NULL || name[0] == '\0' || value == NULL ||
         value_capacity == 0U || has_control_character(header, header_length)) {

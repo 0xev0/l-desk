@@ -13,8 +13,7 @@ static void record_round_trips_all_slots(void)
     TEST_ASSERT_TRUE(desk_preset_record_encode(&source, 500000, record));
 
     desk_preset_bank_t decoded = {0};
-    TEST_ASSERT_TRUE(
-        desk_preset_record_decode(record, sizeof(record), 500000, &decoded));
+    TEST_ASSERT_TRUE(desk_preset_record_decode(record, sizeof(record), 500000, &decoded));
     TEST_ASSERT_EQUAL_INT(0, decoded.target_um[0]);
     TEST_ASSERT_EQUAL_INT(250000, decoded.target_um[1]);
     TEST_ASSERT_EQUAL_INT(500000, decoded.target_um[2]);
@@ -56,10 +55,10 @@ static void corruption_and_noncanonical_data_are_rejected(void)
             desk_preset_record_decode(corrupted, sizeof(corrupted), 500000, &decoded));
     }
 
-    TEST_ASSERT_FALSE(desk_preset_record_decode(valid, sizeof(valid) - 1U, 500000,
-                                                &(desk_preset_bank_t){0}));
-    TEST_ASSERT_FALSE(desk_preset_record_decode(valid, sizeof(valid), 200000,
-                                                &(desk_preset_bank_t){0}));
+    TEST_ASSERT_FALSE(
+        desk_preset_record_decode(valid, sizeof(valid) - 1U, 500000, &(desk_preset_bank_t){0}));
+    TEST_ASSERT_FALSE(
+        desk_preset_record_decode(valid, sizeof(valid), 200000, &(desk_preset_bank_t){0}));
 }
 
 static void invalid_arguments_and_targets_are_rejected(void)
@@ -73,10 +72,9 @@ static void invalid_arguments_and_targets_are_rejected(void)
     TEST_ASSERT_FALSE(desk_preset_record_encode(&invalid, 500000, record));
     TEST_ASSERT_FALSE(desk_preset_record_encode(&invalid, 0, record));
     TEST_ASSERT_FALSE(desk_preset_record_encode(&invalid, 500000, NULL));
-    TEST_ASSERT_FALSE(desk_preset_record_decode(NULL, sizeof(record), 500000,
-                                                &(desk_preset_bank_t){0}));
     TEST_ASSERT_FALSE(
-        desk_preset_record_decode(record, sizeof(record), 500000, NULL));
+        desk_preset_record_decode(NULL, sizeof(record), 500000, &(desk_preset_bank_t){0}));
+    TEST_ASSERT_FALSE(desk_preset_record_decode(record, sizeof(record), 500000, NULL));
 }
 
 int main(void)

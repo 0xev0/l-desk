@@ -24,8 +24,7 @@ esp_err_t esp_ota_update_begin(esp_ota_update_t *update, size_t image_size)
     return result;
 }
 
-esp_err_t esp_ota_update_write(esp_ota_update_t *update, const void *data,
-                               size_t data_size)
+esp_err_t esp_ota_update_write(esp_ota_update_t *update, const void *data, size_t data_size)
 {
     if (update == NULL || !update->active || data == NULL || data_size == 0U ||
         update->written_size > update->expected_size ||
@@ -41,8 +40,7 @@ esp_err_t esp_ota_update_write(esp_ota_update_t *update, const void *data,
 
 esp_err_t esp_ota_update_finish(esp_ota_update_t *update)
 {
-    if (update == NULL || !update->active ||
-        update->written_size != update->expected_size) {
+    if (update == NULL || !update->active || update->written_size != update->expected_size) {
         return ESP_ERR_INVALID_STATE;
     }
 

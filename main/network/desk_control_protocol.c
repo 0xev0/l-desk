@@ -11,8 +11,8 @@ static uint16_t read_u16_be(const uint8_t *bytes)
 
 static uint32_t read_u32_be(const uint8_t *bytes)
 {
-    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) |
-           ((uint32_t)bytes[2] << 8U) | bytes[3];
+    return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) |
+           bytes[3];
 }
 
 static bool decode_action(uint8_t encoded, desk_control_action_t *action)
@@ -44,9 +44,10 @@ static bool decode_action(uint8_t encoded, desk_control_action_t *action)
     }
 }
 
-desk_protocol_parse_result_t desk_control_protocol_parse_command(
-    const uint8_t *frame, size_t frame_size, uint64_t lease_id,
-    desk_remote_command_t *command)
+desk_protocol_parse_result_t desk_control_protocol_parse_command(const uint8_t *frame,
+                                                                 size_t frame_size,
+                                                                 uint64_t lease_id,
+                                                                 desk_remote_command_t *command)
 {
     if (frame == NULL || command == NULL || lease_id == 0U) {
         return DESK_PROTOCOL_PARSE_INVALID_ARGUMENT;

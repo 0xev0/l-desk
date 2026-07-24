@@ -19,10 +19,8 @@ void app_main(void)
         ESP_LOGE(TAG, "network unavailable; local safety control remains active");
     }
     esp_err_t ota_result =
-        esp_ota_guard_confirm_boot_ready(DESK_OTA_BOOT_SELF_TEST_TIMEOUT_MS,
-                                         network_ready);
+        esp_ota_guard_confirm_boot_ready(DESK_OTA_BOOT_SELF_TEST_TIMEOUT_MS, network_ready);
     if (ota_result != ESP_OK) {
-        ESP_LOGE(TAG, "firmware self-test confirmation failed: %s",
-                 esp_err_to_name(ota_result));
+        ESP_LOGE(TAG, "firmware self-test confirmation failed: %s", esp_err_to_name(ota_result));
     }
 }

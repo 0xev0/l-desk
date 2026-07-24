@@ -34,12 +34,9 @@ static void valid_commands_map_to_safe_outputs(void)
 static void invalid_commands_fail_safe(void)
 {
     const desk_axis_output_t invalid[] = {
-        {MOTOR_COMMAND_STOP, 1U, false},
-        {MOTOR_COMMAND_STOP, 0U, true},
-        {MOTOR_COMMAND_UP, 0U, true},
-        {MOTOR_COMMAND_UP, 500U, false},
-        {MOTOR_COMMAND_DOWN, 1001U, true},
-        {(motor_command_t)99, 500U, true},
+        {MOTOR_COMMAND_STOP, 1U, false},   {MOTOR_COMMAND_STOP, 0U, true},
+        {MOTOR_COMMAND_UP, 0U, true},      {MOTOR_COMMAND_UP, 500U, false},
+        {MOTOR_COMMAND_DOWN, 1001U, true}, {(motor_command_t)99, 500U, true},
     };
 
     for (size_t item = 0; item < sizeof(invalid) / sizeof(invalid[0]); ++item) {

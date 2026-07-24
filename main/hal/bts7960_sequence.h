@@ -31,7 +31,7 @@ typedef struct {
     uint32_t lpwm_duty;
 } bts7960_snapshot_t;
 
-bool bts7960_sequence_build(motor_command_t applied_direction,
-                            const desk_axis_output_t *command, bts7960_sequence_t *sequence);
-bool bts7960_snapshot_matches(const desk_axis_output_t *command,
-                              const bts7960_snapshot_t *snapshot, uint32_t maximum_pwm_duty);
+bool bts7960_sequence_build(motor_command_t applied_direction, const desk_axis_output_t *command,
+                            bts7960_sequence_t *sequence);
+bool bts7960_snapshot_matches(const desk_axis_output_t *command, const bts7960_snapshot_t *snapshot,
+                              uint32_t maximum_pwm_duty);

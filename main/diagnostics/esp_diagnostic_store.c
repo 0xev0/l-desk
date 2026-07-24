@@ -11,8 +11,7 @@
 static esp_err_t load_log(esp_diagnostic_store_t *store)
 {
     size_t encoded_size = 0U;
-    esp_err_t result =
-        nvs_get_blob(store->nvs, DESK_DIAGNOSTIC_KEY, NULL, &encoded_size);
+    esp_err_t result = nvs_get_blob(store->nvs, DESK_DIAGNOSTIC_KEY, NULL, &encoded_size);
     if (result == ESP_ERR_NVS_NOT_FOUND) {
         desk_diagnostic_log_init(&store->log);
         return ESP_OK;
@@ -47,9 +46,8 @@ esp_err_t esp_diagnostic_store_init(esp_diagnostic_store_t *store)
 
     esp_err_t result = nvs_flash_init_partition(DESK_DIAGNOSTIC_PARTITION);
     if (result == ESP_OK) {
-        result = nvs_open_from_partition(DESK_DIAGNOSTIC_PARTITION,
-                                         DESK_DIAGNOSTIC_NAMESPACE, NVS_READWRITE,
-                                         &store->nvs);
+        result = nvs_open_from_partition(DESK_DIAGNOSTIC_PARTITION, DESK_DIAGNOSTIC_NAMESPACE,
+                                         NVS_READWRITE, &store->nvs);
     }
     if (result == ESP_OK) {
         result = load_log(store);
@@ -65,10 +63,9 @@ esp_err_t esp_diagnostic_store_init(esp_diagnostic_store_t *store)
     return ESP_OK;
 }
 
-esp_err_t esp_diagnostic_store_append(esp_diagnostic_store_t *store,
-                                      uint32_t reset_reason,
-                                      uint32_t uptime_seconds,
-                                      desk_state_t state, desk_error_t error)
+esp_err_t esp_diagnostic_store_append(esp_diagnostic_store_t *store, uint32_t reset_reason,
+                                      uint32_t uptime_seconds, desk_state_t state,
+                                      desk_error_t error)
 {
     if (store == NULL || !store->initialized) {
         return ESP_ERR_INVALID_ARG;
@@ -76,14 +73,12 @@ esp_err_t esp_diagnostic_store_append(esp_diagnostic_store_t *store,
 
     desk_diagnostic_log_t updated = store->log;
     uint8_t encoded[DESK_DIAGNOSTIC_LOG_ENCODED_SIZE];
-    if (!desk_diagnostic_log_append(&updated, reset_reason, uptime_seconds, state,
-                                    error) ||
+    if (!desk_diagnostic_log_append(&updated, reset_reason, uptime_seconds, state, error) ||
         !desk_diagnostic_log_encode(&updated, encoded)) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    esp_err_t result =
-        nvs_set_blob(store->nvs, DESK_DIAGNOSTIC_KEY, encoded, sizeof(encoded));
+    esp_err_t result = nvs_set_blob(store->nvs, DESK_DIAGNOSTIC_KEY, encoded, sizeof(encoded));
     if (result == ESP_OK) {
         result = nvs_commit(store->nvs);
     }

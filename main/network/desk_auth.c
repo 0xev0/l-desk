@@ -38,8 +38,7 @@ static bool parse_secret(const char *text, uint8_t secret[DESK_AUTH_SECRET_BYTES
         return false;
     }
     size_t text_length = 0U;
-    while (text_length <= DESK_AUTH_SECRET_HEX_LENGTH &&
-           text[text_length] != '\0') {
+    while (text_length <= DESK_AUTH_SECRET_HEX_LENGTH && text[text_length] != '\0') {
         ++text_length;
     }
     if (text_length != DESK_AUTH_SECRET_HEX_LENGTH) {
@@ -80,9 +79,8 @@ bool desk_auth_format_secret(const uint8_t secret[DESK_AUTH_SECRET_BYTES],
     return true;
 }
 
-void desk_authenticator_init(
-    desk_authenticator_t *authenticator,
-    const uint8_t admin_secret[DESK_AUTH_SECRET_BYTES])
+void desk_authenticator_init(desk_authenticator_t *authenticator,
+                             const uint8_t admin_secret[DESK_AUTH_SECRET_BYTES])
 {
     if (authenticator == NULL) {
         return;
@@ -140,10 +138,10 @@ static bool session_secret_exists(const desk_authenticator_t *authenticator,
     return exists;
 }
 
-desk_auth_login_result_t desk_authenticator_login(
-    desk_authenticator_t *authenticator, const char *admin_secret_hex,
-    const uint8_t session_random[DESK_AUTH_SECRET_BYTES], uint64_t now_ms,
-    char session_hex[DESK_AUTH_SECRET_TEXT_SIZE])
+desk_auth_login_result_t
+desk_authenticator_login(desk_authenticator_t *authenticator, const char *admin_secret_hex,
+                         const uint8_t session_random[DESK_AUTH_SECRET_BYTES], uint64_t now_ms,
+                         char session_hex[DESK_AUTH_SECRET_TEXT_SIZE])
 {
     if (authenticator == NULL || !authenticator->initialized || admin_secret_hex == NULL ||
         session_random == NULL || session_hex == NULL) {
@@ -201,8 +199,7 @@ bool desk_authenticator_validate_session(desk_authenticator_t *authenticator,
     return valid;
 }
 
-bool desk_authenticator_logout(desk_authenticator_t *authenticator,
-                               const char *session_hex)
+bool desk_authenticator_logout(desk_authenticator_t *authenticator, const char *session_hex)
 {
     if (authenticator == NULL || !authenticator->initialized || session_hex == NULL) {
         return false;

@@ -13,8 +13,8 @@ static bool has_forbidden_control_character(const char *text, size_t length)
     return false;
 }
 
-bool desk_network_credentials_are_valid(const char *ssid, size_t ssid_length,
-                                        const char *password, size_t password_length)
+bool desk_network_credentials_are_valid(const char *ssid, size_t ssid_length, const char *password,
+                                        size_t password_length)
 {
     return ssid != NULL && password != NULL && ssid_length > 0U &&
            ssid_length <= DESK_WIFI_SSID_MAX_LENGTH &&

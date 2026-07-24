@@ -55,9 +55,9 @@ static void apply_preset_action(desk_app_t *app, const desk_resolved_controls_t 
     }
 
     motor_command_t direction = MOTOR_COMMAND_STOP;
-    bool valid = desk_preset_controller_update(
-        &app->preset_controller, &app->presets, slot, inputs,
-        app->last_outputs.position_reference_valid, &direction);
+    bool valid =
+        desk_preset_controller_update(&app->preset_controller, &app->presets, slot, inputs,
+                                      app->last_outputs.position_reference_valid, &direction);
     inputs->up_pressed = valid && direction == MOTOR_COMMAND_UP;
     inputs->down_pressed = valid && direction == MOTOR_COMMAND_DOWN;
     inputs->calibrate_pressed = false;
@@ -145,14 +145,14 @@ desk_outputs_t desk_app_step(desk_app_t *app)
         app->motion_inhibited = false;
         app->motion_release_pending = false;
     }
-    desk_resolved_controls_t controls = desk_command_arbiter_resolve(
-        &app->command_arbiter,
-        &(desk_local_controls_t){
-            .up_pressed = inputs.up_pressed,
-            .down_pressed = inputs.down_pressed,
-            .calibrate_pressed = inputs.calibrate_pressed,
-        },
-        now_ms);
+    desk_resolved_controls_t controls =
+        desk_command_arbiter_resolve(&app->command_arbiter,
+                                     &(desk_local_controls_t){
+                                         .up_pressed = inputs.up_pressed,
+                                         .down_pressed = inputs.down_pressed,
+                                         .calibrate_pressed = inputs.calibrate_pressed,
+                                     },
+                                     now_ms);
     if (app->motion_inhibited) {
         desk_command_arbiter_cancel_remote(&app->command_arbiter);
         controls = (desk_resolved_controls_t){

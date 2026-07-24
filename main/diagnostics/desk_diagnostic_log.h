@@ -26,12 +26,10 @@ typedef struct {
 
 void desk_diagnostic_log_init(desk_diagnostic_log_t *log);
 bool desk_diagnostic_log_append(desk_diagnostic_log_t *log, uint32_t reset_reason,
-                                uint32_t uptime_seconds, desk_state_t state,
-                                desk_error_t error);
+                                uint32_t uptime_seconds, desk_state_t state, desk_error_t error);
 bool desk_diagnostic_log_get_newest(const desk_diagnostic_log_t *log, size_t offset,
                                     desk_diagnostic_event_t *event);
-bool desk_diagnostic_log_encode(
-    const desk_diagnostic_log_t *log,
-    uint8_t encoded[DESK_DIAGNOSTIC_LOG_ENCODED_SIZE]);
+bool desk_diagnostic_log_encode(const desk_diagnostic_log_t *log,
+                                uint8_t encoded[DESK_DIAGNOSTIC_LOG_ENCODED_SIZE]);
 bool desk_diagnostic_log_decode(const uint8_t *encoded, size_t encoded_size,
                                 desk_diagnostic_log_t *log);

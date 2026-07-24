@@ -32,8 +32,7 @@ static uint32_t duty_permille_to_raw(uint16_t duty_permille)
     return ((uint32_t)duty_permille * MOTOR_PWM_MAX_DUTY) / 1000U;
 }
 
-static esp_err_t execute_operation(bts7960_driver_t *driver,
-                                   const bts7960_operation_t *operation)
+static esp_err_t execute_operation(bts7960_driver_t *driver, const bts7960_operation_t *operation)
 {
     switch (operation->kind) {
     case BTS7960_OPERATION_SET_ENABLE:
@@ -46,8 +45,7 @@ static esp_err_t execute_operation(bts7960_driver_t *driver,
     return ESP_ERR_INVALID_ARG;
 }
 
-static esp_err_t execute_sequence(bts7960_driver_t *driver,
-                                  const bts7960_sequence_t *sequence)
+static esp_err_t execute_sequence(bts7960_driver_t *driver, const bts7960_sequence_t *sequence)
 {
     for (size_t index = 0U; index < sequence->count; ++index) {
         esp_err_t result = execute_operation(driver, &sequence->operations[index]);
@@ -132,9 +130,8 @@ esp_err_t bts7960_driver_self_check(const bts7960_driver_t *driver,
         .rpwm_duty = ledc_get_duty(LEDC_LOW_SPEED_MODE, driver->rpwm_channel),
         .lpwm_duty = ledc_get_duty(LEDC_LOW_SPEED_MODE, driver->lpwm_channel),
     };
-    return bts7960_snapshot_matches(expected_command, &snapshot, MOTOR_PWM_MAX_DUTY)
-               ? ESP_OK
-               : ESP_FAIL;
+    return bts7960_snapshot_matches(expected_command, &snapshot, MOTOR_PWM_MAX_DUTY) ? ESP_OK
+                                                                                     : ESP_FAIL;
 }
 
 esp_err_t bts7960_driver_apply(bts7960_driver_t *driver, const desk_axis_output_t *command)

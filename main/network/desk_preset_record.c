@@ -18,8 +18,8 @@ static void write_u32_le(uint8_t *destination, uint32_t value)
 
 static uint32_t read_u32_le(const uint8_t *source)
 {
-    return (uint32_t)source[0] | ((uint32_t)source[1] << 8U) |
-           ((uint32_t)source[2] << 16U) | ((uint32_t)source[3] << 24U);
+    return (uint32_t)source[0] | ((uint32_t)source[1] << 8U) | ((uint32_t)source[2] << 16U) |
+           ((uint32_t)source[3] << 24U);
 }
 
 bool desk_preset_record_encode(const desk_preset_bank_t *bank, int32_t maximum_travel_um,
@@ -50,13 +50,13 @@ bool desk_preset_record_encode(const desk_preset_bank_t *bank, int32_t maximum_t
     return true;
 }
 
-bool desk_preset_record_decode(const uint8_t *record, size_t record_size,
-                               int32_t maximum_travel_um, desk_preset_bank_t *bank)
+bool desk_preset_record_decode(const uint8_t *record, size_t record_size, int32_t maximum_travel_um,
+                               desk_preset_bank_t *bank)
 {
     if (record == NULL || bank == NULL || record_size != DESK_PRESET_RECORD_SIZE ||
         maximum_travel_um <= 0 || record[0] != DESK_PRESET_RECORD_VERSION ||
-        (record[1] & (uint8_t)~DESK_PRESET_RECORD_VALID_MASK) != 0U ||
-        record[2] != 0U || record[3] != 0U ||
+        (record[1] & (uint8_t)~DESK_PRESET_RECORD_VALID_MASK) != 0U || record[2] != 0U ||
+        record[3] != 0U ||
         read_u32_le(&record[DESK_PRESET_RECORD_CRC_OFFSET]) !=
             desk_crc32_compute(record, DESK_PRESET_RECORD_CRC_OFFSET)) {
         return false;
@@ -68,8 +68,7 @@ bool desk_preset_record_decode(const uint8_t *record, size_t record_size,
             read_u32_le(&record[DESK_PRESET_RECORD_HEADER_SIZE + (slot * sizeof(uint32_t))]);
         bool valid = (record[1] & (uint8_t)(1U << slot)) != 0U;
         if ((!valid && target != 0U) || target > (uint32_t)maximum_travel_um ||
-            (valid && !desk_preset_bank_set(&decoded, slot, (int32_t)target,
-                                            maximum_travel_um))) {
+            (valid && !desk_preset_bank_set(&decoded, slot, (int32_t)target, maximum_travel_um))) {
             return false;
         }
     }

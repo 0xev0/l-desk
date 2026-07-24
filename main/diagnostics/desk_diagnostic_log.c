@@ -19,16 +19,15 @@ static void write_u32_le(uint8_t *destination, uint32_t value)
 
 static uint32_t read_u32_le(const uint8_t *source)
 {
-    return (uint32_t)source[0] | ((uint32_t)source[1] << 8U) |
-           ((uint32_t)source[2] << 16U) | ((uint32_t)source[3] << 24U);
+    return (uint32_t)source[0] | ((uint32_t)source[1] << 8U) | ((uint32_t)source[2] << 16U) |
+           ((uint32_t)source[3] << 24U);
 }
 
 static bool event_is_valid(const desk_diagnostic_event_t *event)
 {
     return event->sequence != 0U && event->state <= DESK_STATE_ERROR &&
            event->error <= DESK_ERROR_FEEDBACK_SKEW &&
-           ((event->error == DESK_ERROR_NONE) ||
-            (event->state == DESK_STATE_ERROR));
+           ((event->error == DESK_ERROR_NONE) || (event->state == DESK_STATE_ERROR));
 }
 
 void desk_diagnostic_log_init(desk_diagnostic_log_t *log)
@@ -41,12 +40,10 @@ void desk_diagnostic_log_init(desk_diagnostic_log_t *log)
 }
 
 bool desk_diagnostic_log_append(desk_diagnostic_log_t *log, uint32_t reset_reason,
-                                uint32_t uptime_seconds, desk_state_t state,
-                                desk_error_t error)
+                                uint32_t uptime_seconds, desk_state_t state, desk_error_t error)
 {
     if (log == NULL || log->count > DESK_DIAGNOSTIC_EVENT_COUNT ||
-        log->next_index >= DESK_DIAGNOSTIC_EVENT_COUNT ||
-        log->next_sequence == 0U) {
+        log->next_index >= DESK_DIAGNOSTIC_EVENT_COUNT || log->next_sequence == 0U) {
         return false;
     }
     desk_diagnostic_event_t event = {
@@ -61,8 +58,7 @@ bool desk_diagnostic_log_append(desk_diagnostic_log_t *log, uint32_t reset_reaso
     }
 
     log->events[log->next_index] = event;
-    log->next_index =
-        (uint8_t)((log->next_index + 1U) % DESK_DIAGNOSTIC_EVENT_COUNT);
+    log->next_index = (uint8_t)((log->next_index + 1U) % DESK_DIAGNOSTIC_EVENT_COUNT);
     if (log->count < DESK_DIAGNOSTIC_EVENT_COUNT) {
         ++log->count;
     }
@@ -81,21 +77,18 @@ bool desk_diagnostic_log_get_newest(const desk_diagnostic_log_t *log, size_t off
         log->next_index >= DESK_DIAGNOSTIC_EVENT_COUNT) {
         return false;
     }
-    size_t index = (log->next_index + DESK_DIAGNOSTIC_EVENT_COUNT - 1U - offset) %
-                   DESK_DIAGNOSTIC_EVENT_COUNT;
+    size_t index =
+        (log->next_index + DESK_DIAGNOSTIC_EVENT_COUNT - 1U - offset) % DESK_DIAGNOSTIC_EVENT_COUNT;
     *event = log->events[index];
     return event_is_valid(event);
 }
 
-bool desk_diagnostic_log_encode(
-    const desk_diagnostic_log_t *log,
-    uint8_t encoded[DESK_DIAGNOSTIC_LOG_ENCODED_SIZE])
+bool desk_diagnostic_log_encode(const desk_diagnostic_log_t *log,
+                                uint8_t encoded[DESK_DIAGNOSTIC_LOG_ENCODED_SIZE])
 {
     if (log == NULL || encoded == NULL || log->count > DESK_DIAGNOSTIC_EVENT_COUNT ||
-        log->next_index >= DESK_DIAGNOSTIC_EVENT_COUNT ||
-        log->next_sequence == 0U ||
-        (log->count < DESK_DIAGNOSTIC_EVENT_COUNT &&
-         log->next_index != log->count)) {
+        log->next_index >= DESK_DIAGNOSTIC_EVENT_COUNT || log->next_sequence == 0U ||
+        (log->count < DESK_DIAGNOSTIC_EVENT_COUNT && log->next_index != log->count)) {
         return false;
     }
 
@@ -131,10 +124,8 @@ bool desk_diagnostic_log_encode(
 bool desk_diagnostic_log_decode(const uint8_t *encoded, size_t encoded_size,
                                 desk_diagnostic_log_t *log)
 {
-    if (encoded == NULL || log == NULL ||
-        encoded_size != DESK_DIAGNOSTIC_LOG_ENCODED_SIZE ||
-        encoded[0] != DESK_DIAGNOSTIC_LOG_VERSION ||
-        encoded[1] > DESK_DIAGNOSTIC_EVENT_COUNT ||
+    if (encoded == NULL || log == NULL || encoded_size != DESK_DIAGNOSTIC_LOG_ENCODED_SIZE ||
+        encoded[0] != DESK_DIAGNOSTIC_LOG_VERSION || encoded[1] > DESK_DIAGNOSTIC_EVENT_COUNT ||
         encoded[2] >= DESK_DIAGNOSTIC_EVENT_COUNT || encoded[3] != 0U ||
         read_u32_le(&encoded[4]) == 0U ||
         (encoded[1] < DESK_DIAGNOSTIC_EVENT_COUNT && encoded[2] != encoded[1]) ||
@@ -158,13 +149,11 @@ bool desk_diagnostic_log_decode(const uint8_t *encoded, size_t encoded_size,
             .state = (desk_state_t)read_u32_le(&encoded[offset + 12U]),
             .error = (desk_error_t)read_u32_le(&encoded[offset + 16U]),
         };
-        bool used = decoded.count == DESK_DIAGNOSTIC_EVENT_COUNT ||
-                    index < decoded.count;
+        bool used = decoded.count == DESK_DIAGNOSTIC_EVENT_COUNT || index < decoded.count;
         if ((used && !event_is_valid(&event)) ||
-            (!used && (event.sequence != 0U || event.reset_reason != 0U ||
-                       event.uptime_seconds != 0U ||
-                       event.state != DESK_STATE_SAFE_START ||
-                       event.error != DESK_ERROR_NONE))) {
+            (!used &&
+             (event.sequence != 0U || event.reset_reason != 0U || event.uptime_seconds != 0U ||
+              event.state != DESK_STATE_SAFE_START || event.error != DESK_ERROR_NONE))) {
             return false;
         }
         decoded.events[index] = event;
