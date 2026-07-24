@@ -13,6 +13,7 @@ idf_component_register(
         "network/desk_auth.c"
         "network/desk_network_config.c"
         "network/esp_network_store.c"
+        "network/esp_wifi_service.c"
         "platform/bts7960_driver.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
@@ -31,6 +32,9 @@ idf_component_register(
         esp_driver_pcnt
         esp_timer
         esp_system
+        esp_event
+        esp_netif
+        esp_wifi
         nvs_flash
 )
 

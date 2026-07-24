@@ -67,7 +67,11 @@ JSON, or ESP-IDF. A future transport may only enqueue:
 - select an allowed control mode.
 
 Network parsing, authentication, provisioning, rate limits, and client
-ownership remain outside the control task.
+ownership remain outside the control task. The ESP-IDF WiFi backend runs as a
+station when credentials are valid. With no credentials it starts a
+password-protected provisioning SoftAP; after ten failed station connections
+it enables the same SoftAP as a bounded recovery path. WiFi power saving is
+disabled so a 100 ms command heartbeat is not delayed unpredictably.
 
 Authentication uses a device-generated 128-bit administration secret, never a
 default password. A successful login creates one of four fixed RAM sessions
@@ -99,3 +103,7 @@ The server binds the frame to the authenticated WebSocket lease; the client
 does not choose or transmit motor IDs. Wrong size, version, type, action,
 sequence, TTL, or reserved bits is rejected before anything reaches the
 application queue.
+
+The WiFi lifecycle alone does not expose motor control. Remote movement remains
+unavailable until the authenticated HTTP/WebSocket service, session ownership,
+disconnect revocation, and mobile client pass their integration gates.
