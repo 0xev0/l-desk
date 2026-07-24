@@ -2,7 +2,7 @@
 
 ## Host Suite
 
-Fourteen CTest executables cover domain, application, input filtering, fake HAL,
+Fifteen CTest executables cover domain, application, input filtering, fake HAL,
 BTS7960 sequencing, and output invariants without ESP-IDF hardware.
 
 ```sh
@@ -50,6 +50,8 @@ explicitly tested.
 - BTS7960 STOP/start/reversal ordering and output-register readback invariants
 - Local/hybrid/mobile-only arbitration, exclusive lease, replay, expiry,
   preemption, and mobile-only error clear
+- Fixed WebSocket command framing, byte order, malformed lengths, reserved
+  fields, actions, sequences, and TTL bounds
 - Explicit long-hold/release error clear without automatic motion
 - Deterministic repeated ticks and saturating timing arithmetic
 

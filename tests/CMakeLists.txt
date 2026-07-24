@@ -69,6 +69,17 @@ target_include_directories(test_command_arbiter PRIVATE
 
 add_test(NAME test_command_arbiter COMMAND test_command_arbiter)
 
+add_executable(test_control_protocol
+    test_control_protocol.c
+    ../main/network/desk_control_protocol.c
+)
+target_include_directories(test_control_protocol PRIVATE
+    ../main/network
+    ../main/app
+)
+
+add_test(NAME test_control_protocol COMMAND test_control_protocol)
+
 add_executable(test_motor_axis
     test_motor_axis.c
     ../main/domain/motor_axis.c

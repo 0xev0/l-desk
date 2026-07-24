@@ -68,3 +68,22 @@ JSON, or ESP-IDF. A future transport may only enqueue:
 
 Network parsing, authentication, provisioning, rate limits, and client
 ownership remain outside the control task.
+
+## WebSocket Command Frame
+
+Movement uses a fixed 12-byte binary frame. Multi-byte values are big-endian.
+
+| Offset | Size | Field |
+|---:|---:|---|
+| 0 | 1 | Protocol version, currently `1` |
+| 1 | 1 | Message type, `1` for command |
+| 2 | 1 | `0 STOP`, `1 UP`, `2 DOWN`, `3 CALIBRATE` |
+| 3 | 1 | Reserved, must be zero |
+| 4 | 4 | Nonzero monotonically increasing sequence |
+| 8 | 2 | Validity in milliseconds, `1..250` |
+| 10 | 2 | Reserved, must be zero |
+
+The server binds the frame to the authenticated WebSocket lease; the client
+does not choose or transmit motor IDs. Wrong size, version, type, action,
+sequence, TTL, or reserved bits is rejected before anything reaches the
+application queue.

@@ -9,6 +9,7 @@ idf_component_register(
         "domain/motor_axis.c"
         "domain/position_scale.c"
         "hal/bts7960_sequence.c"
+        "network/desk_control_protocol.c"
         "platform/bts7960_driver.c"
         "platform/esp_desk_platform.c"
         "platform/esp_gpio_hal.c"
@@ -19,6 +20,7 @@ idf_component_register(
         "app"
         "domain"
         "hal"
+        "network"
         "platform"
     REQUIRES
         esp_driver_gpio
