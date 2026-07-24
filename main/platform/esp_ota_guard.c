@@ -12,7 +12,8 @@
 
 static const char *const TAG = "desk_ota_guard";
 
-esp_err_t esp_ota_guard_confirm_control_ready(uint32_t timeout_ms)
+esp_err_t esp_ota_guard_confirm_boot_ready(uint32_t timeout_ms,
+                                           bool network_service_ready)
 {
     const esp_partition_t *running = esp_ota_get_running_partition();
     esp_ota_img_states_t state;
@@ -23,6 +24,10 @@ esp_err_t esp_ota_guard_confirm_control_ready(uint32_t timeout_ms)
     if (result != ESP_OK || state != ESP_OTA_IMG_PENDING_VERIFY) {
         return result;
     }
+    if (!network_service_ready) {
+        ESP_LOGE(TAG, "network service self-test failed; requesting rollback");
+        return esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
 
     uint32_t attempts = timeout_ms / DESK_OTA_HEALTH_POLL_MS;
     for (uint32_t attempt = 0U; attempt <= attempts; ++attempt) {
@@ -32,7 +37,8 @@ esp_err_t esp_ota_guard_confirm_control_ready(uint32_t timeout_ms)
             result = esp_ota_mark_app_valid_cancel_rollback();
             if (result == ESP_OK) {
                 const esp_app_desc_t *description = esp_app_get_description();
-                ESP_LOGI(TAG, "confirmed firmware %s after stopped control self-test",
+                ESP_LOGI(TAG,
+                         "confirmed firmware %s after stopped control and network self-test",
                          description->version);
             }
             return result;
