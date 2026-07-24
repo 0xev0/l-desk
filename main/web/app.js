@@ -83,6 +83,7 @@ function renderStatus(status) {
   $("#desk-state").textContent = titleCase(status.state);
   $("#control-source").textContent = titleCase(status.source);
   $("#mode-label").textContent = titleCase(status.mode);
+  $("#firmware-version").textContent = `FW ${status.firmware} · ${status.partition}`;
   const average = status.axes.reduce((sum, axis) => sum + axis.position_um, 0) /
     status.axes.length / 1000;
   $("#desk-height").textContent = status.referenced ? average.toFixed(1) : "--";
@@ -93,11 +94,13 @@ function renderStatus(status) {
   });
 
   const alert = $("#alert");
-  const hasAlert = status.error !== "none" || status.emergency || status.feedback_warning;
+  const hasAlert = status.error !== "none" || status.emergency ||
+    status.feedback_warning || status.preset_storage_fault;
   alert.classList.toggle("hidden", !hasAlert);
   if (hasAlert) {
     $("#alert-title").textContent = status.emergency ? "E-stop activo" :
-      status.feedback_warning ? "Desnivel" : "Error";
+      status.feedback_warning ? "Desnivel" :
+        status.preset_storage_fault ? "Memorias desactivadas" : "Error";
     $("#alert-detail").textContent = status.error === "none" ? "" :
       titleCase(status.error);
   }

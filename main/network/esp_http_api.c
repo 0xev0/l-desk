@@ -11,8 +11,11 @@
 #include "desk_form_codec.h"
 #include "desk_http_security.h"
 #include "desk_network_config.h"
+#include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_ota_ops.h"
 #include "esp_random.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 
 #define DESK_HTTP_BODY_MAX_SIZE 256U
@@ -284,9 +287,12 @@ static esp_err_t status_handler(httpd_req_t *request)
     }
 
     char response[2048];
+    const esp_app_desc_t *app_description = esp_app_get_description();
+    const esp_partition_t *running_partition = esp_ota_get_running_partition();
     int written = snprintf(
         response, sizeof(response),
-        "{\"state\":\"%s\",\"error\":\"%s\",\"mode\":\"%s\","
+        "{\"firmware\":\"%s\",\"partition\":\"%s\",\"reset_reason\":%u,"
+        "\"state\":\"%s\",\"error\":\"%s\",\"mode\":\"%s\","
         "\"source\":\"%s\",\"remote_active\":%s,\"referenced\":%s,"
         "\"feedback_warning\":%s,\"emergency\":%s,\"provisioning\":%s,"
         "\"wifi_connected\":%s,\"preset_target_reached\":%s,"
@@ -302,7 +308,9 @@ static esp_err_t status_handler(httpd_req_t *request)
         "\"upper\":%s,\"lower\":%s,\"direction\":%u,\"duty\":%u,\"enabled\":%s}],"
         "\"diagnostics\":{\"free_heap\":%u,\"minimum_free_heap\":%u,"
         "\"dropped_logs\":%lu,\"control_stack\":%lu,\"logger_stack\":%lu}}",
-        state_name(status.outputs.state), error_name(status.outputs.error),
+        app_description->version, running_partition->label,
+        (unsigned)esp_reset_reason(), state_name(status.outputs.state),
+        error_name(status.outputs.error),
         mode_name(status.control_mode), source_name(status.control_source),
         status.remote_control_active ? "true" : "false",
         status.outputs.position_reference_valid ? "true" : "false",
@@ -348,6 +356,56 @@ static esp_err_t status_handler(httpd_req_t *request)
         return send_error(request, HTTPD_500, "status_overflow");
     }
     return send_json(request, HTTPD_200, response);
+}
+
+static esp_err_t diagnostics_handler(httpd_req_t *request)
+{
+    esp_http_api_t *api = request->user_ctx;
+    if (!request_is_authenticated(api, request)) {
+        return send_error(request, "401 Unauthorized", "authentication_required");
+    }
+
+    desk_diagnostic_log_t log;
+    bool recovered_storage_fault;
+    if (!desk_app_get_runtime_diagnostic_log(&log, &recovered_storage_fault) ||
+        set_security_headers(request) != ESP_OK ||
+        httpd_resp_set_type(request, HTTPD_TYPE_JSON) != ESP_OK) {
+        return send_error(request, "503 Service Unavailable",
+                          "diagnostics_unavailable");
+    }
+
+    const char *prefix = recovered_storage_fault
+                             ? "{\"storage_fault\":true,\"events\":["
+                             : "{\"storage_fault\":false,\"events\":[";
+    esp_err_t result = httpd_resp_send_chunk(request, prefix, HTTPD_RESP_USE_STRLEN);
+    for (size_t offset = 0U; result == ESP_OK && offset < log.count; ++offset) {
+        desk_diagnostic_event_t event;
+        char encoded[192];
+        if (!desk_diagnostic_log_get_newest(&log, offset, &event)) {
+            result = ESP_ERR_INVALID_STATE;
+            break;
+        }
+        int written = snprintf(
+            encoded, sizeof(encoded),
+            "%s{\"sequence\":%lu,\"reset_reason\":%lu,\"uptime_s\":%lu,"
+            "\"state\":\"%s\",\"error\":\"%s\"}",
+            offset == 0U ? "" : ",", (unsigned long)event.sequence,
+            (unsigned long)event.reset_reason,
+            (unsigned long)event.uptime_seconds, state_name(event.state),
+            error_name(event.error));
+        if (written <= 0 || (size_t)written >= sizeof(encoded)) {
+            result = ESP_ERR_INVALID_SIZE;
+            break;
+        }
+        result = httpd_resp_send_chunk(request, encoded, (ssize_t)written);
+    }
+    if (result == ESP_OK) {
+        result = httpd_resp_send_chunk(request, "]}", HTTPD_RESP_USE_STRLEN);
+    }
+    if (result == ESP_OK) {
+        result = httpd_resp_send_chunk(request, NULL, 0U);
+    }
+    return result;
 }
 
 static esp_err_t preset_handler(httpd_req_t *request)
@@ -695,6 +753,10 @@ esp_err_t esp_http_api_start(esp_http_api_t *api, esp_network_store_t *store,
         {.uri = "/api/v1/status",
          .method = HTTP_GET,
          .handler = status_handler,
+         .user_ctx = api},
+        {.uri = "/api/v1/diagnostics",
+         .method = HTTP_GET,
+         .handler = diagnostics_handler,
          .user_ctx = api},
         {.uri = "/api/v1/session",
          .method = HTTP_POST,

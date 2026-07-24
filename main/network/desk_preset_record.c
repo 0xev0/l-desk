@@ -2,25 +2,12 @@
 
 #include <string.h>
 
+#include "desk_crc32.h"
+
 #define DESK_PRESET_RECORD_VERSION 1U
 #define DESK_PRESET_RECORD_HEADER_SIZE 4U
 #define DESK_PRESET_RECORD_CRC_OFFSET 16U
 #define DESK_PRESET_RECORD_VALID_MASK 0x07U
-#define DESK_CRC32_POLYNOMIAL UINT32_C(0xedb88320)
-
-static uint32_t crc32(const uint8_t *data, size_t length)
-{
-    uint32_t crc = UINT32_MAX;
-    for (size_t index = 0U; index < length; ++index) {
-        crc ^= data[index];
-        for (unsigned bit = 0U; bit < 8U; ++bit) {
-            uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-            crc = (crc >> 1U) ^ (DESK_CRC32_POLYNOMIAL & mask);
-        }
-    }
-    return ~crc;
-}
-
 static void write_u32_le(uint8_t *destination, uint32_t value)
 {
     destination[0] = (uint8_t)value;
@@ -58,7 +45,7 @@ bool desk_preset_record_encode(const desk_preset_bank_t *bank, int32_t maximum_t
                      (uint32_t)target_um);
     }
     write_u32_le(&encoded[DESK_PRESET_RECORD_CRC_OFFSET],
-                 crc32(encoded, DESK_PRESET_RECORD_CRC_OFFSET));
+                 desk_crc32_compute(encoded, DESK_PRESET_RECORD_CRC_OFFSET));
     memcpy(record, encoded, sizeof(encoded));
     return true;
 }
@@ -71,7 +58,7 @@ bool desk_preset_record_decode(const uint8_t *record, size_t record_size,
         (record[1] & (uint8_t)~DESK_PRESET_RECORD_VALID_MASK) != 0U ||
         record[2] != 0U || record[3] != 0U ||
         read_u32_le(&record[DESK_PRESET_RECORD_CRC_OFFSET]) !=
-            crc32(record, DESK_PRESET_RECORD_CRC_OFFSET)) {
+            desk_crc32_compute(record, DESK_PRESET_RECORD_CRC_OFFSET)) {
         return false;
     }
 

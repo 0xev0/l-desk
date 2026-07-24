@@ -11,6 +11,24 @@
 
 static const char *const TAG = "desk_platform";
 
+static void persist_error_transition(esp_desk_platform_context_t *platform,
+                                     const desk_outputs_t *outputs)
+{
+    if (outputs->error == DESK_ERROR_NONE ||
+        !platform->diagnostic_store.initialized ||
+        platform->diagnostic_mutex == NULL ||
+        xSemaphoreTake(platform->diagnostic_mutex, pdMS_TO_TICKS(100U)) != pdTRUE) {
+        return;
+    }
+    esp_err_t result = esp_diagnostic_store_append(
+        &platform->diagnostic_store, 0U,
+        (uint32_t)(esp_time_hal_now_ms() / 1000U), outputs->state, outputs->error);
+    (void)xSemaphoreGive(platform->diagnostic_mutex);
+    if (result != ESP_OK) {
+        ESP_LOGE(TAG, "failed to persist error history: %s", esp_err_to_name(result));
+    }
+}
+
 static const char *log_kind_name(esp_desk_log_kind_t kind)
 {
     switch (kind) {
@@ -78,6 +96,7 @@ static void logger_task(void *argument)
             ESP_LOGI(TAG, "three-axis platform initialized; motor outputs disabled");
         } else if (record.kind == ESP_DESK_LOG_TRANSITION) {
             const desk_outputs_t *outputs = &record.outputs;
+            persist_error_transition(platform, outputs);
             ESP_LOGI(
                 TAG, "state=%s error=%d warning=%d calibrated=%d motors=[%d:%u,%d:%u,%d:%u]",
                 state_name(outputs->state), (int)outputs->error, outputs->feedback_warning,
@@ -115,6 +134,22 @@ static bool initialize(void *context)
     }
     *platform = (esp_desk_platform_context_t){0};
     atomic_init(&platform->dropped_log_records, 0U);
+
+    platform->diagnostic_mutex =
+        xSemaphoreCreateMutexStatic(&platform->diagnostic_mutex_storage);
+    esp_err_t diagnostic_result =
+        platform->diagnostic_mutex != NULL
+            ? esp_diagnostic_store_init(&platform->diagnostic_store)
+            : ESP_ERR_NO_MEM;
+    if (diagnostic_result == ESP_OK) {
+        diagnostic_result = esp_diagnostic_store_append(
+            &platform->diagnostic_store, (uint32_t)esp_reset_reason(), 0U,
+            DESK_STATE_SAFE_START, DESK_ERROR_NONE);
+    }
+    if (diagnostic_result != ESP_OK) {
+        ESP_LOGE(TAG, "persistent diagnostics unavailable: %s",
+                 esp_err_to_name(diagnostic_result));
+    }
 
     esp_err_t result = esp_gpio_hal_init(&platform->gpio);
     if (result == ESP_OK) {
@@ -268,5 +303,21 @@ bool esp_desk_platform_get_diagnostics(const esp_desk_platform_context_t *contex
             context->log_task != NULL ? (uint32_t)uxTaskGetStackHighWaterMark(context->log_task)
                                       : 0U,
     };
+    return true;
+}
+
+bool esp_desk_platform_get_diagnostic_log(esp_desk_platform_context_t *context,
+                                          desk_diagnostic_log_t *log,
+                                          bool *recovered_storage_fault)
+{
+    if (context == NULL || log == NULL || recovered_storage_fault == NULL ||
+        !context->diagnostic_store.initialized || context->diagnostic_mutex == NULL ||
+        xSemaphoreTake(context->diagnostic_mutex, pdMS_TO_TICKS(100U)) != pdTRUE) {
+        return false;
+    }
+    *log = context->diagnostic_store.log;
+    *recovered_storage_fault =
+        context->diagnostic_store.recovered_storage_fault;
+    (void)xSemaphoreGive(context->diagnostic_mutex);
     return true;
 }

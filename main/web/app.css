@@ -323,6 +323,14 @@ main {
   font-size: 16px;
 }
 
+#firmware-version {
+  display: block;
+  margin-top: 4px;
+  color: #777c80;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .icon-command {
   min-height: 36px;
   padding: 0 12px;

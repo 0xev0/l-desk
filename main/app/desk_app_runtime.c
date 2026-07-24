@@ -179,6 +179,14 @@ bool desk_app_get_runtime_status(desk_app_status_t *status)
     return valid;
 }
 
+bool desk_app_get_runtime_diagnostic_log(desk_diagnostic_log_t *log,
+                                         bool *recovered_storage_fault)
+{
+    return atomic_load_explicit(&runtime.ready, memory_order_acquire) &&
+           esp_desk_platform_get_diagnostic_log(&runtime.platform_context, log,
+                                                recovered_storage_fault);
+}
+
 static bool queue_runtime_request(const desk_runtime_request_t *request)
 {
     return request != NULL && runtime.request_queue != NULL &&

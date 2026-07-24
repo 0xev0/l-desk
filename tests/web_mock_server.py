@@ -32,6 +32,9 @@ def status_payload():
         for position, count in ((247800, 4956), (249100, 4982), (248500, 4970))
     ]
     return {
+        "firmware": "mock-test",
+        "partition": "ota_0",
+        "reset_reason": 1,
         "state": "idle",
         "error": "none",
         "mode": "mobile",

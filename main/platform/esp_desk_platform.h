@@ -10,9 +10,11 @@
 #include "esp_hall_hal.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 #include "board_config.h"
+#include "esp_diagnostic_store.h"
 
 typedef enum {
     ESP_DESK_LOG_INITIALIZED = 0,
@@ -39,6 +41,9 @@ typedef struct {
 typedef struct {
     esp_gpio_hal_t gpio;
     esp_hall_hal_t hall;
+    esp_diagnostic_store_t diagnostic_store;
+    SemaphoreHandle_t diagnostic_mutex;
+    StaticSemaphore_t diagnostic_mutex_storage;
     QueueHandle_t log_queue;
     StaticQueue_t log_queue_storage;
     uint8_t log_queue_buffer[BOARD_LOG_QUEUE_DEPTH * sizeof(esp_desk_log_record_t)];
@@ -52,3 +57,6 @@ typedef struct {
 desk_platform_t esp_desk_platform_create(esp_desk_platform_context_t *context);
 bool esp_desk_platform_get_diagnostics(const esp_desk_platform_context_t *context,
                                        esp_desk_platform_diagnostics_t *diagnostics);
+bool esp_desk_platform_get_diagnostic_log(esp_desk_platform_context_t *context,
+                                          desk_diagnostic_log_t *log,
+                                          bool *recovered_storage_fault);

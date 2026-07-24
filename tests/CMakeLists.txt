@@ -84,11 +84,13 @@ add_executable(test_preset_record
     test_preset_record.c
     ../main/network/desk_preset_record.c
     ../main/app/desk_preset_controller.c
+    ../main/hal/desk_crc32.c
 )
 target_include_directories(test_preset_record PRIVATE
     ../main/network
     ../main/app
     ../main/domain
+    ../main/hal
 )
 
 add_test(NAME test_preset_record COMMAND test_preset_record)
@@ -105,6 +107,19 @@ target_include_directories(test_boot_health PRIVATE
 )
 
 add_test(NAME test_boot_health COMMAND test_boot_health)
+
+add_executable(test_diagnostic_log
+    test_diagnostic_log.c
+    ../main/diagnostics/desk_diagnostic_log.c
+    ../main/hal/desk_crc32.c
+)
+target_include_directories(test_diagnostic_log PRIVATE
+    ../main/diagnostics
+    ../main/domain
+    ../main/hal
+)
+
+add_test(NAME test_diagnostic_log COMMAND test_diagnostic_log)
 
 add_executable(test_control_protocol
     test_control_protocol.c

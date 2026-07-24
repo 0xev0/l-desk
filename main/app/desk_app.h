@@ -9,6 +9,7 @@
 #include "desk_input_filter.h"
 #include "desk_platform.h"
 #include "desk_preset_controller.h"
+#include "desk_diagnostic_log.h"
 
 typedef struct {
     size_t current_free_heap_bytes;
@@ -58,6 +59,8 @@ bool desk_app_get_status(const desk_app_t *app, desk_app_status_t *status);
 bool desk_app_start(void);
 bool desk_app_get_runtime_diagnostics(desk_runtime_diagnostics_t *diagnostics);
 bool desk_app_get_runtime_status(desk_app_status_t *status);
+bool desk_app_get_runtime_diagnostic_log(desk_diagnostic_log_t *log,
+                                         bool *recovered_storage_fault);
 bool desk_app_queue_remote_lease(uint64_t lease_id);
 bool desk_app_queue_remote_release(uint64_t lease_id);
 bool desk_app_queue_remote_command(const desk_remote_command_t *command);
